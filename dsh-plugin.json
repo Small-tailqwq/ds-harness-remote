@@ -1,0 +1,15 @@
+{
+  "$schema": "https://dsh.community/schemas/dsh-plugin-0.15.json",
+  "id": "io.github.smalltailqwq.dsh-lango",
+  "name": "dsh-lango",
+  "version": "0.1.0",
+  "manifestVersion": "0.15",
+  "facets": {
+    "host": {
+      "entry": "dist/index.js",
+      "apiVersion": "v1alpha1"
+    }
+  },
+  "subscriptions": [],
+  "license": "MIT"
+}

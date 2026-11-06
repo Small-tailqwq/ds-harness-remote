@@ -1,0 +1,6 @@
+# Mount the lango Host entry. It listens only on private-network addresses and
+# accepts only paired devices; see README.md.
+- insert:
+    - id: dsh-lango
+      name: dsh-lango
+      config: {}
