@@ -2,19 +2,41 @@
   "name": "dsh-lango",
   "version": "0.1.0",
   "description": "Pair a phone with DeepSeek Harness over a private network (LAN, WireGuard, Tailscale, ZeroTier) with no server or account.",
-  "keywords": ["deepseek", "deepseek-harness", "dsh", "dsh-plugin", "lan", "remote"],
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "lan",
+    "remote"
+  ],
   "license": "MIT",
+  "icon": "./icon.svg",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
   "bin": {
     "lango": "./bin/lango.js"
   },
-  "files": ["bin", "dist/index.js", "dsh-plugin.json", "cordis.patch.yml", "README.md", "LICENSE", "LICENSE.ds-harness-remote"],
+  "files": [
+    "bin",
+    "dist/index.js",
+    "dsh-plugin.json",
+    "cordis.patch.yml",
+    "locale",
+    "icon.svg",
+    "docs",
+    "README.md",
+    "README.zh.md",
+    "LICENSE",
+    "LICENSE.ds-harness-remote"
+  ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

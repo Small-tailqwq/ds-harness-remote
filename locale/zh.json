@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Lango 局域网直连",
+    "description": "手机经局域网、WireGuard 或 Tailscale 直连本机 DeepSeek Harness，配对一次即可，无需服务器和账号。",
+    "detail": "docs/DETAIL.zh.md"
+  }
+}

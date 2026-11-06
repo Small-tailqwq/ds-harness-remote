@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Lango",
+    "description": "Connect your phone straight to this DeepSeek Harness over LAN, WireGuard or Tailscale. Pair once; no server or account.",
+    "detail": "docs/DETAIL.md"
+  }
+}

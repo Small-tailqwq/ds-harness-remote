@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300" role="img">
+<title>Your phone, straight to this Harness</title>
+<rect width="640" height="300" fill="#f2f5fd"/>
+<g font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif">
+<text x="32" y="56" font-size="22" font-weight="600" fill="#1f2a44">Your phone, straight to this Harness</text>
+<text x="32" y="80" font-size="12.5" fill="#6b7a99">LAN, WireGuard or Tailscale. Pair once; no server, no account.</text>
+</g>
+<g transform="translate(30 0)">
+<!-- phone -->
+<rect x="56" y="104" width="132" height="176" rx="18" fill="#fff" stroke="#d9e1f2" stroke-width="1.5"/>
+<rect x="104" y="112" width="36" height="5" rx="2.5" fill="#e3e8f3"/>
+<circle cx="76" cy="136" r="4" fill="#3ec28f"/>
+<text x="86" y="140" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="10.5" fill="#4a5878">DESKTOP · LAN</text>
+<path d="M68 150H176" stroke="#eef1f7"/>
+<rect x="68" y="160" width="108" height="34" rx="8" fill="#edf3ff" stroke="#adc7fa"/>
+<circle cx="80" cy="177" r="4.5" fill="#6488ef"/>
+<text x="90" y="181" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="10" fill="#3d4f7a">Pairing flow</text>
+<rect x="68" y="200" width="108" height="34" rx="8" fill="#f4f6fb"/>
+<circle cx="80" cy="217" r="4.5" fill="#b4c4e3"/>
+<text x="90" y="221" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="10" fill="#7a88a8">Release notes</text>
+<rect x="68" y="244" width="108" height="22" rx="11" fill="#f4f6fb" stroke="#e3e8f3"/>
+<rect x="78" y="253" width="56" height="4" rx="2" fill="#d6deed"/>
+<circle cx="164" cy="255" r="6" fill="#6488ef"/>
+<!-- direct link -->
+<circle cx="218" cy="192" r="5" fill="#9db4ff"/>
+<circle cx="236" cy="192" r="5" fill="#7d99f7"/>
+<circle cx="254" cy="192" r="5" fill="#6488ef"/>
+<!-- computer -->
+<rect x="282" y="112" width="246" height="150" rx="14" fill="#fff" stroke="#d9e1f2" stroke-width="1.5"/>
+<path d="M282 136H528" stroke="#eef1f7"/>
+<circle cx="298" cy="124" r="3.5" fill="#d6deed"/><circle cx="310" cy="124" r="3.5" fill="#d6deed"/><circle cx="322" cy="124" r="3.5" fill="#d6deed"/>
+<rect x="300" y="152" width="210" height="92" rx="10" fill="#f7f9fd" stroke="#e3e8f3"/>
+<rect x="314" y="166" width="22" height="34" rx="5" fill="none" stroke="#6488ef" stroke-width="2"/>
+<rect x="321" y="194" width="8" height="2" rx="1" fill="#6488ef"/>
+<text x="348" y="179" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="11" fill="#4a5878">Paired device</text>
+<text x="348" y="196" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="10.5" fill="#7a88a8">Fingerprint  <tspan font-family="Consolas, 'SF Mono', Menlo, monospace" fill="#3d4f7a">7DBD B211 5B08</tspan></text>
+<rect x="314" y="214" width="62" height="20" rx="10" fill="#e6f7ef"/>
+<circle cx="326" cy="224" r="3.5" fill="#3ec28f"/>
+<text x="334" y="228" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="10" fill="#2f8f69">Paired</text>
+<rect x="378" y="262" width="54" height="10" rx="2" fill="#d9e1f2"/>
+<rect x="356" y="272" width="98" height="6" rx="3" fill="#d9e1f2"/>
+</g>
+</svg>
