@@ -23,6 +23,10 @@ export interface PeerConnectionContext {
 export interface ConnectedPeer {
   deviceId: string
   mode?: 'LAN' | 'P2P' | 'TURN' | 'Relay'
+  connectionId: string
+  address?: string
+  connectedAt?: number
+  rttMs?: number
 }
 
 /**
@@ -48,6 +52,7 @@ export type RpcRouterFactory = (
 
 export class ConnectionController {
   private readonly active = new Map<string, ActiveConnection>()
+  private readonly listeners = new Set<() => void>()
   private acceptQueue: Promise<void> = Promise.resolve()
   constructor(
     /** Local Direct pairings: the only trust store lango has. */
@@ -104,11 +109,14 @@ export class ConnectionController {
     }
     this.active.set(connectionId, connection)
     try {
-      connection.unsubscribe = channel.onMessage(message => { void this.handle(connection, message) })
+      const stopMessages = channel.onMessage(message => { void this.handle(connection, message) })
+      const stopClose = channel.onClose?.(() => { void this.disconnect(connection) }) ?? (() => undefined)
+      connection.unsubscribe = () => { stopMessages(); stopClose() }
     } catch (error) {
       await this.disconnect(connection)
       throw error
     }
+    this.emit()
     this.logger?.info('peer connection accepted', {
       peerDeviceId: shortId(channel.peerDeviceId),
       connectionId: shortId(connectionId),
@@ -131,9 +139,14 @@ export class ConnectionController {
       const deviceId = connection.channel.peerDeviceId
       if (seen.has(deviceId)) continue
       seen.add(deviceId)
+      const { channel } = connection
       peers.push({
         deviceId,
-        ...(connection.channel.mode === undefined ? {} : { mode: connection.channel.mode }),
+        connectionId: channel.security.connectionId,
+        ...(channel.mode === undefined ? {} : { mode: channel.mode }),
+        ...(channel.remoteAddress === undefined ? {} : { address: channel.remoteAddress }),
+        ...(channel.connectedAt === undefined ? {} : { connectedAt: channel.connectedAt }),
+        ...(channel.rttMs === undefined ? {} : { rttMs: channel.rttMs }),
       })
     }
     return peers
@@ -151,6 +164,21 @@ export class ConnectionController {
 
   async send(message: RemoteMessage): Promise<void> {
     await Promise.all([...this.active.values()].map(connection => this.sendConnection(connection, message)))
+  }
+
+  /** Measure the round-trip time of every connection of one device; the fastest answer wins. */
+  async measure(deviceId: string): Promise<number | undefined> {
+    const results = await Promise.all([...this.active.values()]
+      .filter(connection => connection.channel.peerDeviceId === deviceId)
+      .map(connection => connection.channel.measureRtt?.() ?? Promise.resolve(undefined)))
+    const measured = results.filter((value): value is number => value !== undefined)
+    return measured.length === 0 ? undefined : Math.min(...measured)
+  }
+
+  /** Accepted and closed connections, for status pushes. */
+  onChange(listener: () => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
   }
 
   async revoke(deviceId: string): Promise<void> {
@@ -244,6 +272,7 @@ export class ConnectionController {
     if (!this.isActive(connection)) return
     this.active.delete(connection.channel.security.connectionId)
     connection.unsubscribe()
+    this.emit()
     try {
       await connection.router.closePeerStreams()
     } finally {
@@ -256,6 +285,16 @@ export class ConnectionController {
       closedBy: detail?.closedBy ?? 'host',
       ...(detail?.retryable === undefined ? {} : { retryable: detail.retryable }),
     })
+  }
+
+  private emit(): void {
+    for (const listener of this.listeners) {
+      try {
+        listener()
+      } catch {
+        // Status listeners must not affect connections.
+      }
+    }
   }
 
   private isActive(connection: ActiveConnection): boolean {

@@ -1,18 +1,13 @@
 import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { generateLocalPairingCode, verifyLocalPairingProof } from './crypto/index.js'
-import { LOCAL_PAIRING_MAX_FAILURES, LOCAL_PAIRING_WINDOW_MS } from './protocol/index.js'
 import { z } from 'zod'
 import { fingerprint, IdentityStore, type HostIdentity } from './identity-store.js'
 import { uuidV7 } from './ids.js'
 
 /**
- * Local Direct trust: the Host identity and paired Clients for connections
- * that never touch a Remote Server. Lives beside, never inside, the
- * per-Server identity directories so account and Local trust stay isolated.
- *
- * Files are shared with the `ds-harness-remote local …` CLI, which runs in
- * another process, so every decision re-reads them.
+ * Local Direct trust: the Host identity and the paired Clients. Pairing
+ * windows live only in the running Host's memory (see `pairing-gate.ts`), so
+ * no other process can open one by writing a file.
  */
 export const LOCAL_MEMBERSHIP_PREFIX = 'local:'
 
@@ -28,6 +23,7 @@ const pairedDeviceSchema = z.object({
   platform: z.string().min(1).max(40),
   pairingId: z.string().uuid(),
   pairedAt: z.number().int().nonnegative(),
+  lastSeenAt: z.number().int().nonnegative().optional(),
 }).strict()
 
 const pairedDevicesSchema = z.object({
@@ -35,34 +31,10 @@ const pairedDevicesSchema = z.object({
   devices: z.array(pairedDeviceSchema).max(256),
 }).strict()
 
-const pairingWindowSchema = z.object({
-  schemaVersion: z.literal(1),
-  code: z.string().min(1).max(64),
-  expiresAt: z.number().int().nonnegative(),
-  failures: z.number().int().nonnegative(),
-}).strict()
-
-const listenerSchema = z.object({
-  schemaVersion: z.literal(1),
-  hostDeviceId: z.string().min(1),
-  hostIdentityKey: z.string().min(1),
-  name: z.string().min(1).max(80),
-  addresses: z.array(z.string().min(1).max(64)).max(16),
-  startedAt: z.number().int().nonnegative(),
-  pid: z.number().int().nonnegative(),
-}).strict()
-
 export type PairedDevice = z.infer<typeof pairedDeviceSchema>
-export type LocalListenerRecord = z.infer<typeof listenerSchema>
 
-export interface LocalPairingWindow {
-  code: string
-  expiresAt: number
-}
-
-export type PairingProofResult =
-  | { ok: true }
-  | { ok: false; reason: 'closed' | 'rejected' }
+/** Files from 0.1 that only the retired CLI read or wrote. */
+const RETIRED_FILES = ['pairing-window.json', 'listener.json']
 
 export class LocalPairingStore {
   readonly directory: string
@@ -78,11 +50,13 @@ export class LocalPairingStore {
 
   async loadIdentity(deviceName: string): Promise<HostIdentity> {
     const identity = await this.identities.loadOrCreate(deviceName.slice(0, 80))
+    // A stale window file from the retired CLI must never be read again.
+    await Promise.all(RETIRED_FILES.map(file => rm(join(this.directory, file), { force: true }).catch(() => undefined)))
     await this.reload()
     return identity
   }
 
-  /** Re-read paired devices if another process changed them. */
+  /** Re-read paired devices if the file changed on disk. */
   async reload(): Promise<boolean> {
     const path = this.devicesPath()
     let stamp = 'missing'
@@ -125,43 +99,6 @@ export class LocalPairingStore {
     return [...this.devices.values()].map(device => ({ ...device }))
   }
 
-  /** Open (or replace) the pairing window with a fresh one-time code. */
-  openWindow(windowMs = LOCAL_PAIRING_WINDOW_MS): Promise<LocalPairingWindow> {
-    return this.serialize(async () => {
-      const window = { code: generateLocalPairingCode(), expiresAt: this.now() + windowMs }
-      await atomicJsonWrite(this.windowPath(), { schemaVersion: 1, ...window, failures: 0 })
-      return window
-    })
-  }
-
-  closeWindow(): Promise<void> {
-    return this.serialize(() => rm(this.windowPath(), { force: true }))
-  }
-
-  async activeWindow(): Promise<LocalPairingWindow | undefined> {
-    const window = await this.readWindow()
-    return window === undefined ? undefined : { code: window.code, expiresAt: window.expiresAt }
-  }
-
-  /**
-   * Check a pairing proof against the open window. A correct proof consumes the
-   * window; wrong proofs count toward a limit that closes it.
-   */
-  verifyProof(handshakeHash: Uint8Array, proof: string): Promise<PairingProofResult> {
-    return this.serialize(async () => {
-      const window = await this.readWindow()
-      if (window === undefined) return { ok: false, reason: 'closed' } as const
-      if (verifyLocalPairingProof(window.code, handshakeHash, proof)) {
-        await rm(this.windowPath(), { force: true })
-        return { ok: true } as const
-      }
-      const failures = window.failures + 1
-      if (failures >= LOCAL_PAIRING_MAX_FAILURES) await rm(this.windowPath(), { force: true })
-      else await atomicJsonWrite(this.windowPath(), { ...window, failures })
-      return { ok: false, reason: 'rejected' } as const
-    })
-  }
-
   pair(input: { deviceId: string; publicKey: string; name: string; platform: string }): Promise<PairedDevice> {
     return this.serialize(async () => {
       await this.reload()
@@ -189,39 +126,31 @@ export class LocalPairingStore {
     })
   }
 
-  async writeListener(record: Omit<LocalListenerRecord, 'schemaVersion'>): Promise<void> {
-    await atomicJsonWrite(this.listenerPath(), { schemaVersion: 1, ...record })
+  rename(deviceId: string, name: string): Promise<boolean> {
+    return this.serialize(async () => {
+      await this.reload()
+      const device = this.devices.get(deviceId)
+      const trimmed = name.trim().slice(0, 80)
+      if (device === undefined || trimmed === '') return false
+      this.devices.set(deviceId, { ...device, name: trimmed })
+      await this.saveDevices()
+      return true
+    })
   }
 
-  async clearListener(pid: number): Promise<void> {
-    const current = await this.readListener()
-    if (current?.pid === pid) await rm(this.listenerPath(), { force: true })
+  /** Record a successful connection; best effort, never blocks trust. */
+  touch(deviceId: string): Promise<void> {
+    return this.serialize(async () => {
+      const device = this.devices.get(deviceId)
+      if (device === undefined) return
+      this.devices.set(deviceId, { ...device, lastSeenAt: this.now() })
+      await this.saveDevices()
+    })
   }
 
-  async readListener(): Promise<LocalListenerRecord | undefined> {
-    try {
-      return listenerSchema.parse(JSON.parse(await readFile(this.listenerPath(), 'utf8')))
-    } catch (error) {
-      if (isMissing(error)) return undefined
-      throw error
-    }
-  }
-
-  private async readWindow(): Promise<z.infer<typeof pairingWindowSchema> | undefined> {
-    let window: z.infer<typeof pairingWindowSchema>
-    try {
-      window = pairingWindowSchema.parse(JSON.parse(await readFile(this.windowPath(), 'utf8')))
-    } catch (error) {
-      if (isMissing(error)) return undefined
-      // A damaged window file must never authorize pairing.
-      await rm(this.windowPath(), { force: true })
-      return undefined
-    }
-    if (window.expiresAt <= this.now() || window.failures >= LOCAL_PAIRING_MAX_FAILURES) {
-      await rm(this.windowPath(), { force: true })
-      return undefined
-    }
-    return window
+  /** Resolves once every queued write has landed. */
+  async flush(): Promise<void> {
+    await this.queue
   }
 
   private async saveDevices(): Promise<void> {
@@ -237,8 +166,6 @@ export class LocalPairingStore {
   }
 
   private devicesPath(): string { return join(this.directory, 'paired-devices.json') }
-  private windowPath(): string { return join(this.directory, 'pairing-window.json') }
-  private listenerPath(): string { return join(this.directory, 'listener.json') }
 }
 
 async function atomicJsonWrite(path: string, value: unknown): Promise<void> {

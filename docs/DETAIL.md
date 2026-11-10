@@ -1,9 +1,5 @@
 ![Lango LAN Direct illustration](preview.svg)
 
-Run this on the computer, open the printed pairing link in dsh-Go on the phone, check the fingerprint, then pair:
+Choose **Pair a device** below. Scan the QR code with dsh-Go, then allow the phone on the computer once both screens show the same six-digit code.
 
-```bash
-node D:/code/lango/bin/lango.js pair
-```
-
-`lango devices` lists paired devices; `lango revoke <device-id>` removes one.
+The same panel lists paired devices with their status, address and latency, and removes them.

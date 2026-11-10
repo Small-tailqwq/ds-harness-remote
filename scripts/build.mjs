@@ -19,3 +19,17 @@ await build({
     js: 'import { createRequire as __langoCreateRequire } from "node:module";\nconst require = __langoCreateRequire(import.meta.url);',
   },
 })
+
+// Desktop panel. React and react-dom come from the Desktop module loader;
+// the QR encoder is inlined.
+await build({
+  entryPoints: [join(root, 'src/client/index.ts')],
+  bundle: true,
+  platform: 'browser',
+  format: 'iife',
+  target: 'es2022',
+  minifySyntax: true,
+  outfile: join(root, 'dist/client.js'),
+  legalComments: 'none',
+})
+

@@ -1,0 +1,108 @@
+export const localeNamespace = 'dsh-lango'
+
+export const en = {
+  title: 'Lango',
+  open: 'Open Lango',
+  close: 'Close',
+  listening: 'Listening',
+  notListening: 'Not listening',
+  noAddress: 'No private network address',
+  addresses: 'Addresses',
+  fingerprint: 'Fingerprint',
+  pairDevice: 'Pair a device',
+  pairScan: 'Scan with dsh-Go',
+  pairExpires: 'Expires in {time}',
+  copyLink: 'Copy link',
+  copied: 'Copied',
+  cancel: 'Cancel',
+  regenerate: 'New code',
+  requestTitle: '{name} wants to pair',
+  requestHint: 'Allow only if the phone shows the same code.',
+  confirmationCode: 'Confirmation code',
+  allow: 'Allow',
+  deny: 'Deny',
+  devices: 'Devices',
+  sidebarEntry: 'Show in sidebar',
+  noDevices: 'No paired devices',
+  online: 'Connected',
+  offline: 'Offline',
+  lastSeen: 'Last seen {time}',
+  neverSeen: 'Paired {time}',
+  latency: 'Latency',
+  measure: 'Measure latency',
+  rename: 'Rename',
+  save: 'Save',
+  revoke: 'Remove',
+  revokeConfirm: 'Remove?',
+  unmeasured: '—',
+  justNow: 'just now',
+  minutesAgo: '{n} min ago',
+  hoursAgo: '{n} h ago',
+  daysAgo: '{n} d ago',
+  unavailable: 'Lango is not running on this Harness.',
+  failed: 'The request failed.',
+  errorNOT_LISTENING: 'Lango is not listening on any private network address.',
+  errorNO_ADDRESS: 'Connect to a LAN, WireGuard or Tailscale network first.',
+  errorREQUEST_GONE: 'The phone stopped waiting.',
+  errorDEVICE_NOT_FOUND: 'That device is no longer paired.',
+}
+
+export type LocaleKey = keyof typeof en
+
+export const zh: Record<LocaleKey, string> = {
+  title: 'Lango',
+  open: '打开 Lango',
+  close: '关闭',
+  listening: '监听中',
+  notListening: '未监听',
+  noAddress: '没有私有网络地址',
+  addresses: '地址',
+  fingerprint: '指纹',
+  pairDevice: '配对新设备',
+  pairScan: '用 dsh-Go 扫码',
+  pairExpires: '{time} 后失效',
+  copyLink: '复制链接',
+  copied: '已复制',
+  cancel: '取消',
+  regenerate: '换一个码',
+  requestTitle: '{name} 请求配对',
+  requestHint: '手机上显示的确认码一致时才允许。',
+  confirmationCode: '确认码',
+  allow: '允许',
+  deny: '拒绝',
+  devices: '设备',
+  sidebarEntry: '在侧栏显示',
+  noDevices: '还没有配对的设备',
+  online: '已连接',
+  offline: '离线',
+  lastSeen: '{time}连接过',
+  neverSeen: '{time}配对',
+  latency: '延迟',
+  measure: '测量延迟',
+  rename: '重命名',
+  save: '保存',
+  revoke: '移除',
+  revokeConfirm: '确认移除',
+  unmeasured: '—',
+  justNow: '刚刚',
+  minutesAgo: '{n} 分钟前',
+  hoursAgo: '{n} 小时前',
+  daysAgo: '{n} 天前',
+  unavailable: '此 Harness 上的 Lango 未运行。',
+  failed: '操作失败。',
+  errorNOT_LISTENING: 'Lango 没有在任何私有网络地址上监听。',
+  errorNO_ADDRESS: '请先连接局域网、WireGuard 或 Tailscale。',
+  errorREQUEST_GONE: '手机已不再等待。',
+  errorDEVICE_NOT_FOUND: '该设备已不在配对列表中。',
+}
+
+export type Translate = (key: LocaleKey, params?: Record<string, string | number>) => string
+
+/** Fallback when the Harness locale service is missing. */
+export function staticTranslate(dictionary: Record<LocaleKey, string>): Translate {
+  return (key, params) => {
+    let text = dictionary[key] ?? key
+    for (const [name, value] of Object.entries(params ?? {})) text = text.split(`{${name}}`).join(String(value))
+    return text
+  }
+}

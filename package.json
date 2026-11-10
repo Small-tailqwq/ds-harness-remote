@@ -1,6 +1,6 @@
 {
   "name": "dsh-lango",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pair a phone with DeepSeek Harness over a private network (LAN, WireGuard, Tailscale, ZeroTier) with no server or account.",
   "keywords": [
     "deepseek",
@@ -16,17 +16,15 @@
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
+    "./client": "./dist/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
-  "bin": {
-    "lango": "./bin/lango.js"
-  },
   "files": [
-    "bin",
     "dist/index.js",
+    "dist/client.js",
     "dsh-plugin.json",
     "cordis.patch.yml",
     "locale",
@@ -40,6 +38,19 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-settings-plugin-inventory",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
     }
   },
   "engines": {

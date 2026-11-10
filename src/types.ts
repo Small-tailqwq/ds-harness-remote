@@ -19,7 +19,16 @@ export interface AuthenticatedPeerChannel {
    * channel, never from wire data. Absent means the account (Server) store.
    */
   readonly trustScope?: 'account' | 'local'
+  /** Source address of the authenticated socket, for display only. */
+  readonly remoteAddress?: string
+  readonly connectedAt?: number
+  /** Latest measured round-trip time in milliseconds. */
+  readonly rttMs?: number
+  /** Measure the round-trip time now; undefined when the peer did not answer in time. */
+  measureRtt?(): Promise<number | undefined>
   send(message: RemoteMessage): Promise<void>
   onMessage(handler: (message: RemoteMessage) => void): () => void
+  /** Called once when the channel closes from either side. */
+  onClose?(handler: () => void): () => void
   close(code?: string): Promise<void>
 }

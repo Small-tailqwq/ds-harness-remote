@@ -13,6 +13,8 @@ import {
 } from '../src/crypto/index.js'
 import {
   LOCAL_DIRECT_PATH,
+  LOCAL_PAIR_APPROVAL_CAPABILITY,
+  parseLocalPairingLink,
   createRpcRequest,
   decodeLocalControlFrame,
   decodeLocalPairFrame,
@@ -24,9 +26,9 @@ import {
 } from '../src/protocol/index.js'
 import { resolveConfig } from '../src/config.js'
 import { uuidV7 } from '../src/ids.js'
-import { LocalPairingStore } from '../src/local-pairing.js'
+import { createControlHandler, type ControlResult } from '../src/control-route.js'
 import { SafeLogger } from '../src/logging.js'
-import { LangoRuntime } from '../src/runtime.js'
+import { LangoRuntime, pairableAddresses, type LangoState } from '../src/runtime.js'
 import type { LocalTypertGateway, TypertRpcResult } from '../src/typert-gateway-contract.js'
 
 const logger = new SafeLogger({ debug() {}, info() {}, warn() {}, error() {} }, 'error')
@@ -57,7 +59,10 @@ beforeEach(async () => {
   const state = { root, dispatch, peersCreated: 0 } as Fixture
   const config = resolveConfig({ bind: ['127.0.0.1'], deviceName: 'Test Host' })
   config.local.port = 0
-  state.runtime = new LangoRuntime(config, root, fakeGateway(dispatch, () => { state.peersCreated += 1 }), logger, '0.2.2-rc.1')
+  state.runtime = new LangoRuntime(config, root, fakeGateway(dispatch, () => { state.peersCreated += 1 }), logger, '0.2.2-rc.1', {
+    // The test listens on loopback only; a real QR code never carries it.
+    pairableAddresses: addresses => [...addresses],
+  })
   await state.runtime.start()
   fixture = state
 })
@@ -73,15 +78,19 @@ interface Session {
   next(): Promise<Buffer>
 }
 
-/** A Client that knows only what the pairing link carries, as dsh-Go does. */
+async function control<T = LangoState>(endpoint: string, payload: unknown = {}): Promise<T> {
+  const result = await createControlHandler(fixture.runtime)(endpoint, payload, new AbortController().signal) as ControlResult<T>
+  if (!result.ok) throw Object.assign(new Error(result.error.message), { code: result.error.code })
+  return result.value
+}
+
+/** A Client that knows only what the QR code carries, as dsh-Go does; the panel approves it. */
 async function pairAndConnect(): Promise<Session> {
-  // Same cross-process path as `lango pair`: a separate store on the same root.
-  const cli = new LocalPairingStore(fixture.root)
-  const listener = await cli.readListener()
-  const window = await cli.openWindow()
+  const opened = await control('pairing.open')
+  const link = parseLocalPairingLink(opened.pairing!.link)
   const keys = generateKeyPair()
   const deviceId = uuidV7()
-  const ws = new WebSocket(`ws://${listener!.addresses[0]}${LOCAL_DIRECT_PATH}`)
+  const ws = new WebSocket(`ws://${link.addresses[0]}${LOCAL_DIRECT_PATH}`)
   const frames: Buffer[] = []
   const waiters: Array<(frame: Buffer) => void> = []
   ws.on('message', (data: Buffer) => { const waiter = waiters.shift(); if (waiter) waiter(data); else frames.push(data) })
@@ -90,24 +99,29 @@ async function pairAndConnect(): Promise<Session> {
   ws.send(encodeLocalControlFrame({
     v: 1,
     type: 'local.hello',
-    payload: { clientDeviceId: deviceId, clientIdentityKey: keys.publicKey, name: 'Phone', platform: 'dsh-app-android', capabilities: [], intent: 'pair' },
+    payload: { clientDeviceId: deviceId, clientIdentityKey: keys.publicKey, name: 'Phone', platform: 'dsh-app-android', capabilities: [LOCAL_PAIR_APPROVAL_CAPABILITY], intent: 'pair' },
   }))
   const ack = decodeLocalControlFrame(await next())
   if (ack.type !== 'local.hello.ack') throw new Error(`unexpected ${ack.type}`)
-  expect(ack.payload.hostIdentityKey).toBe(listener!.hostIdentityKey)
+  expect(ack.payload.hostIdentityKey).toBe(link.hostIdentityKey)
   expect(ack.payload.capabilities).toEqual([])
   const noise = new NoiseIkSession({
     role: 'initiator',
     localPrivateKey: keys.privateKey,
     localPublicKey: keys.publicKey,
-    remotePublicKey: listener!.hostIdentityKey,
-    prologue: createLocalNoisePrologue(ack.payload.connectionId, listener!.hostDeviceId, deviceId),
+    remotePublicKey: link.hostIdentityKey,
+    prologue: createLocalNoisePrologue(ack.payload.connectionId, link.hostDeviceId, deviceId),
   })
   ws.send(encodeLocalControlFrame({ v: 1, type: 'secure.handshake', payload: { connectionId: ack.payload.connectionId, step: 1, data: toBase64Url(noise.writeHandshake()) } }))
   const step2 = decodeLocalControlFrame(await next())
   if (step2.type !== 'secure.handshake') throw new Error('no step 2')
   noise.readHandshake(fromBase64Url(step2.payload.data))
-  ws.send(noise.encrypt(encodeLocalPairFrame({ v: 1, type: 'local.pair.prove', payload: { proof: createLocalPairingProof(window.code, noise.handshakeHash()) } })))
+  ws.send(noise.encrypt(encodeLocalPairFrame({ v: 1, type: 'local.pair.prove', payload: { proof: createLocalPairingProof(link.pairingCode, noise.handshakeHash()) } })))
+  expect(decodeLocalPairFrame(noise.decrypt(await next())).type).toBe('local.pair.pending')
+  const waiting = await control('state')
+  expect(waiting.pairing?.request).toMatchObject({ deviceId, name: 'Phone', confirmationCode: expect.stringMatching(/^\d{6}$/u) })
+  const approved = await control('pairing.decide', { requestId: waiting.pairing!.request!.id, approve: true })
+  expect(approved.pairing).toBeUndefined()
   expect(decodeLocalPairFrame(noise.decrypt(await next())).type).toBe('local.pair.ok')
   return { ws, noise, next }
 }
@@ -150,5 +164,29 @@ describe('lango runtime', () => {
     expect(fixture.dispatch).toHaveBeenCalledTimes(1)
     expect(fixture.runtime.status()).toMatchObject({ listening: true, pairedDevices: 1, connections: 1, carrier: true })
     session.ws.close()
+  })
+
+  it('manages devices from the panel and measures their latency', async () => {
+    const session = await pairAndConnect()
+    const ping = await rpc(session, 'harness.transport.ping', {})
+    expect(ping.payload).toMatchObject({ result: {} })
+    await vi.waitFor(async () => expect((await control('state')).devices[0]?.online).toBe(true))
+    const [device] = (await control('state')).devices
+    expect(device).toMatchObject({ name: 'Phone', platform: 'dsh-app-android', online: true, address: '127.0.0.1' })
+    const measured = await control<{ rttMs?: number; state: LangoState }>('device.measure', { deviceId: device!.deviceId })
+    expect(measured.rttMs).toBeTypeOf('number')
+    expect(measured.state.devices[0]?.rttMs).toBe(measured.rttMs)
+    expect((await control('device.rename', { deviceId: device!.deviceId, name: 'Pixel' })).devices[0]?.name).toBe('Pixel')
+    const closed = new Promise(resolve => session.ws.once('close', resolve))
+    expect((await control('device.revoke', { deviceId: device!.deviceId })).devices).toEqual([])
+    await closed
+    await expect(control('device.revoke', { deviceId: device!.deviceId })).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })
+    await expect(control('pairing.decide', { requestId: 'gone', approve: true })).rejects.toMatchObject({ code: 'REQUEST_GONE' })
+    await expect(control('pairing.open', { extra: 1 })).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
+
+  it('never puts loopback or link-local addresses into the QR code', () => {
+    expect(pairableAddresses(['127.0.0.1:47821', '[fd7a:115c::1]:47821', '100.101.1.2:47821', '192.168.1.5:47821', '169.254.3.3:47821']))
+      .toEqual(['192.168.1.5:47821', '100.101.1.2:47821', '[fd7a:115c::1]:47821'])
   })
 })

@@ -1,9 +1,5 @@
 ![Lango 局域网直连示意图](preview.zh.svg)
 
-在电脑上运行下面的命令，把打印出的配对链接在手机的 dsh-Go 中打开，核对指纹后配对：
+在下方点 **配对新设备**，用 dsh-Go 扫码；两边显示的 6 位确认码一致后，在电脑上点允许。
 
-```bash
-node D:/code/lango/bin/lango.js pair
-```
-
-`lango devices` 查看已配对设备，`lango revoke <device-id>` 撤销配对。
+同一面板列出已配对设备的状态、地址和延迟，也可以在这里移除设备。

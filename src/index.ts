@@ -1,4 +1,5 @@
 import { resolveConfig, type Config } from './config.js'
+import { registerControlRoute, type HostWebServerLike } from './control-route.js'
 import { readHarnessDistributionVersion } from './harness-version.js'
 import { SafeLogger } from './logging.js'
 import { createOwnerPeerFactory, type OwnerPeerServiceLike } from './owner-peer.js'
@@ -7,7 +8,6 @@ import { LangoRuntime } from './runtime.js'
 import type { LocalTypertGateway, TypertGatewayLike } from './typert-gateway-contract.js'
 import { TypertGatewaySwitch } from './typert-gateway-switch.js'
 
-export { runCli } from './cli.js'
 export const name = 'dsh-lango'
 
 /** The slice of the Cordis Context lango touches; the Host supplies the real one. */
@@ -58,6 +58,7 @@ async function activate(ctx: ContextLike, input: Config): Promise<void> {
   const harnessVersion = await readHarnessDistributionVersion()
   if (harnessVersion === undefined) logger.warn('Harness version is unavailable')
   const runtime = new LangoRuntime(config, langoRoot(), gateway, logger, harnessVersion)
+  const webServer = ctx.get('webServer', false) as HostWebServerLike | undefined
   await ctx.effect(async () => {
     try {
       await runtime.start()
@@ -65,7 +66,12 @@ async function activate(ctx: ContextLike, input: Config): Promise<void> {
       await runtime.close()
       throw error
     }
-    return () => runtime.close()
+    // Pairing and device management happen only in the Desktop panel.
+    const disposeControl = registerControlRoute(connection as Parameters<typeof registerControlRoute>[0], webServer, runtime, logger)
+    return async () => {
+      await disposeControl()
+      await runtime.close()
+    }
   }, 'dsh-lango lifecycle')
 }
 

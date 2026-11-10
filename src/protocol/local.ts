@@ -14,6 +14,14 @@ export const LOCAL_PAIRING_URI_HOST = 'local-pair'
 export const LOCAL_PAIRING_WINDOW_MS = 5 * 60_000
 /** Wrong proofs allowed per pairing window before the window is closed. */
 export const LOCAL_PAIRING_MAX_FAILURES = 5
+/** Time the person at the computer has to approve a phone that proved the code. */
+export const LOCAL_PAIRING_APPROVAL_MS = 120_000
+/**
+ * Client capability declaring it understands `local.pair.pending`. Pairing
+ * always waits for approval on the computer, so a pair hello without it is
+ * refused.
+ */
+export const LOCAL_PAIR_APPROVAL_CAPABILITY = 'local.pair.approval.v1'
 /** Time an unauthenticated socket has to complete hello, handshake and (when pairing) proof. */
 export const LOCAL_PREAUTH_TIMEOUT_MS = 10_000
 /** Frames before the secure channel is ready are small; anything larger is hostile. */
@@ -32,6 +40,8 @@ export const localErrorCodes = [
   'PEER_IDENTITY_MISMATCH',
   'PAIRING_CLOSED',
   'PAIRING_REJECTED',
+  'PAIRING_DENIED',
+  'PAIRING_EXPIRED',
   'SECURE_CHANNEL_FAILED',
   'CONNECTION_REPLACED',
   'HOST_STOPPING',
@@ -110,6 +120,7 @@ export const localControlFrameSchema = z.discriminatedUnion('type', [
  */
 export const localPairFrameSchema = z.discriminatedUnion('type', [
   z.object({ v: z.literal(LOCAL_DIRECT_VERSION), type: z.literal('local.pair.prove'), payload: z.object({ proof: fixedBase64Url(32) }).strict() }).strict(),
+  z.object({ v: z.literal(LOCAL_DIRECT_VERSION), type: z.literal('local.pair.pending'), payload: z.object({ timeoutMs: z.number().int().min(1_000).max(600_000) }).strict() }).strict(),
   z.object({ v: z.literal(LOCAL_DIRECT_VERSION), type: z.literal('local.pair.ok'), payload: z.object({ pairingId: deviceIdSchema }).strict() }).strict(),
 ])
 

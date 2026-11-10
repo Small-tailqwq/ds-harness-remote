@@ -3737,4539 +3737,6 @@ var require_websocket_server = __commonJS({
   }
 });
 
-// node_modules/qrcode/lib/can-promise.js
-var require_can_promise = __commonJS({
-  "node_modules/qrcode/lib/can-promise.js"(exports, module) {
-    module.exports = function() {
-      return typeof Promise === "function" && Promise.prototype && Promise.prototype.then;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/utils.js
-var require_utils = __commonJS({
-  "node_modules/qrcode/lib/core/utils.js"(exports) {
-    var toSJISFunction;
-    var CODEWORDS_COUNT = [
-      0,
-      // Not used
-      26,
-      44,
-      70,
-      100,
-      134,
-      172,
-      196,
-      242,
-      292,
-      346,
-      404,
-      466,
-      532,
-      581,
-      655,
-      733,
-      815,
-      901,
-      991,
-      1085,
-      1156,
-      1258,
-      1364,
-      1474,
-      1588,
-      1706,
-      1828,
-      1921,
-      2051,
-      2185,
-      2323,
-      2465,
-      2611,
-      2761,
-      2876,
-      3034,
-      3196,
-      3362,
-      3532,
-      3706
-    ];
-    exports.getSymbolSize = function getSymbolSize(version2) {
-      if (!version2) throw new Error('"version" cannot be null or undefined');
-      if (version2 < 1 || version2 > 40) throw new Error('"version" should be in range from 1 to 40');
-      return version2 * 4 + 17;
-    };
-    exports.getSymbolTotalCodewords = function getSymbolTotalCodewords(version2) {
-      return CODEWORDS_COUNT[version2];
-    };
-    exports.getBCHDigit = function(data2) {
-      let digit = 0;
-      while (data2 !== 0) {
-        digit++;
-        data2 >>>= 1;
-      }
-      return digit;
-    };
-    exports.setToSJISFunction = function setToSJISFunction(f) {
-      if (typeof f !== "function") {
-        throw new Error('"toSJISFunc" is not a valid function.');
-      }
-      toSJISFunction = f;
-    };
-    exports.isKanjiModeEnabled = function() {
-      return typeof toSJISFunction !== "undefined";
-    };
-    exports.toSJIS = function toSJIS(kanji) {
-      return toSJISFunction(kanji);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/error-correction-level.js
-var require_error_correction_level = __commonJS({
-  "node_modules/qrcode/lib/core/error-correction-level.js"(exports) {
-    exports.L = { bit: 1 };
-    exports.M = { bit: 0 };
-    exports.Q = { bit: 3 };
-    exports.H = { bit: 2 };
-    function fromString(string4) {
-      if (typeof string4 !== "string") {
-        throw new Error("Param is not a string");
-      }
-      const lcStr = string4.toLowerCase();
-      switch (lcStr) {
-        case "l":
-        case "low":
-          return exports.L;
-        case "m":
-        case "medium":
-          return exports.M;
-        case "q":
-        case "quartile":
-          return exports.Q;
-        case "h":
-        case "high":
-          return exports.H;
-        default:
-          throw new Error("Unknown EC Level: " + string4);
-      }
-    }
-    exports.isValid = function isValid(level) {
-      return level && typeof level.bit !== "undefined" && level.bit >= 0 && level.bit < 4;
-    };
-    exports.from = function from(value, defaultValue) {
-      if (exports.isValid(value)) {
-        return value;
-      }
-      try {
-        return fromString(value);
-      } catch (e) {
-        return defaultValue;
-      }
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/bit-buffer.js
-var require_bit_buffer = __commonJS({
-  "node_modules/qrcode/lib/core/bit-buffer.js"(exports, module) {
-    function BitBuffer() {
-      this.buffer = [];
-      this.length = 0;
-    }
-    BitBuffer.prototype = {
-      get: function(index) {
-        const bufIndex = Math.floor(index / 8);
-        return (this.buffer[bufIndex] >>> 7 - index % 8 & 1) === 1;
-      },
-      put: function(num, length) {
-        for (let i = 0; i < length; i++) {
-          this.putBit((num >>> length - i - 1 & 1) === 1);
-        }
-      },
-      getLengthInBits: function() {
-        return this.length;
-      },
-      putBit: function(bit) {
-        const bufIndex = Math.floor(this.length / 8);
-        if (this.buffer.length <= bufIndex) {
-          this.buffer.push(0);
-        }
-        if (bit) {
-          this.buffer[bufIndex] |= 128 >>> this.length % 8;
-        }
-        this.length++;
-      }
-    };
-    module.exports = BitBuffer;
-  }
-});
-
-// node_modules/qrcode/lib/core/bit-matrix.js
-var require_bit_matrix = __commonJS({
-  "node_modules/qrcode/lib/core/bit-matrix.js"(exports, module) {
-    function BitMatrix(size) {
-      if (!size || size < 1) {
-        throw new Error("BitMatrix size must be defined and greater than 0");
-      }
-      this.size = size;
-      this.data = new Uint8Array(size * size);
-      this.reservedBit = new Uint8Array(size * size);
-    }
-    BitMatrix.prototype.set = function(row, col, value, reserved) {
-      const index = row * this.size + col;
-      this.data[index] = value;
-      if (reserved) this.reservedBit[index] = true;
-    };
-    BitMatrix.prototype.get = function(row, col) {
-      return this.data[row * this.size + col];
-    };
-    BitMatrix.prototype.xor = function(row, col, value) {
-      this.data[row * this.size + col] ^= value;
-    };
-    BitMatrix.prototype.isReserved = function(row, col) {
-      return this.reservedBit[row * this.size + col];
-    };
-    module.exports = BitMatrix;
-  }
-});
-
-// node_modules/qrcode/lib/core/alignment-pattern.js
-var require_alignment_pattern = __commonJS({
-  "node_modules/qrcode/lib/core/alignment-pattern.js"(exports) {
-    var getSymbolSize = require_utils().getSymbolSize;
-    exports.getRowColCoords = function getRowColCoords(version2) {
-      if (version2 === 1) return [];
-      const posCount = Math.floor(version2 / 7) + 2;
-      const size = getSymbolSize(version2);
-      const intervals = size === 145 ? 26 : Math.ceil((size - 13) / (2 * posCount - 2)) * 2;
-      const positions = [size - 7];
-      for (let i = 1; i < posCount - 1; i++) {
-        positions[i] = positions[i - 1] - intervals;
-      }
-      positions.push(6);
-      return positions.reverse();
-    };
-    exports.getPositions = function getPositions(version2) {
-      const coords = [];
-      const pos = exports.getRowColCoords(version2);
-      const posLength = pos.length;
-      for (let i = 0; i < posLength; i++) {
-        for (let j = 0; j < posLength; j++) {
-          if (i === 0 && j === 0 || // top-left
-          i === 0 && j === posLength - 1 || // bottom-left
-          i === posLength - 1 && j === 0) {
-            continue;
-          }
-          coords.push([pos[i], pos[j]]);
-        }
-      }
-      return coords;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/finder-pattern.js
-var require_finder_pattern = __commonJS({
-  "node_modules/qrcode/lib/core/finder-pattern.js"(exports) {
-    var getSymbolSize = require_utils().getSymbolSize;
-    var FINDER_PATTERN_SIZE = 7;
-    exports.getPositions = function getPositions(version2) {
-      const size = getSymbolSize(version2);
-      return [
-        // top-left
-        [0, 0],
-        // top-right
-        [size - FINDER_PATTERN_SIZE, 0],
-        // bottom-left
-        [0, size - FINDER_PATTERN_SIZE]
-      ];
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/mask-pattern.js
-var require_mask_pattern = __commonJS({
-  "node_modules/qrcode/lib/core/mask-pattern.js"(exports) {
-    exports.Patterns = {
-      PATTERN000: 0,
-      PATTERN001: 1,
-      PATTERN010: 2,
-      PATTERN011: 3,
-      PATTERN100: 4,
-      PATTERN101: 5,
-      PATTERN110: 6,
-      PATTERN111: 7
-    };
-    var PenaltyScores = {
-      N1: 3,
-      N2: 3,
-      N3: 40,
-      N4: 10
-    };
-    exports.isValid = function isValid(mask) {
-      return mask != null && mask !== "" && !isNaN(mask) && mask >= 0 && mask <= 7;
-    };
-    exports.from = function from(value) {
-      return exports.isValid(value) ? parseInt(value, 10) : void 0;
-    };
-    exports.getPenaltyN1 = function getPenaltyN1(data2) {
-      const size = data2.size;
-      let points = 0;
-      let sameCountCol = 0;
-      let sameCountRow = 0;
-      let lastCol = null;
-      let lastRow = null;
-      for (let row = 0; row < size; row++) {
-        sameCountCol = sameCountRow = 0;
-        lastCol = lastRow = null;
-        for (let col = 0; col < size; col++) {
-          let module2 = data2.get(row, col);
-          if (module2 === lastCol) {
-            sameCountCol++;
-          } else {
-            if (sameCountCol >= 5) points += PenaltyScores.N1 + (sameCountCol - 5);
-            lastCol = module2;
-            sameCountCol = 1;
-          }
-          module2 = data2.get(col, row);
-          if (module2 === lastRow) {
-            sameCountRow++;
-          } else {
-            if (sameCountRow >= 5) points += PenaltyScores.N1 + (sameCountRow - 5);
-            lastRow = module2;
-            sameCountRow = 1;
-          }
-        }
-        if (sameCountCol >= 5) points += PenaltyScores.N1 + (sameCountCol - 5);
-        if (sameCountRow >= 5) points += PenaltyScores.N1 + (sameCountRow - 5);
-      }
-      return points;
-    };
-    exports.getPenaltyN2 = function getPenaltyN2(data2) {
-      const size = data2.size;
-      let points = 0;
-      for (let row = 0; row < size - 1; row++) {
-        for (let col = 0; col < size - 1; col++) {
-          const last = data2.get(row, col) + data2.get(row, col + 1) + data2.get(row + 1, col) + data2.get(row + 1, col + 1);
-          if (last === 4 || last === 0) points++;
-        }
-      }
-      return points * PenaltyScores.N2;
-    };
-    exports.getPenaltyN3 = function getPenaltyN3(data2) {
-      const size = data2.size;
-      let points = 0;
-      let bitsCol = 0;
-      let bitsRow = 0;
-      for (let row = 0; row < size; row++) {
-        bitsCol = bitsRow = 0;
-        for (let col = 0; col < size; col++) {
-          bitsCol = bitsCol << 1 & 2047 | data2.get(row, col);
-          if (col >= 10 && (bitsCol === 1488 || bitsCol === 93)) points++;
-          bitsRow = bitsRow << 1 & 2047 | data2.get(col, row);
-          if (col >= 10 && (bitsRow === 1488 || bitsRow === 93)) points++;
-        }
-      }
-      return points * PenaltyScores.N3;
-    };
-    exports.getPenaltyN4 = function getPenaltyN4(data2) {
-      let darkCount = 0;
-      const modulesCount = data2.data.length;
-      for (let i = 0; i < modulesCount; i++) darkCount += data2.data[i];
-      const k = Math.abs(Math.ceil(darkCount * 100 / modulesCount / 5) - 10);
-      return k * PenaltyScores.N4;
-    };
-    function getMaskAt(maskPattern, i, j) {
-      switch (maskPattern) {
-        case exports.Patterns.PATTERN000:
-          return (i + j) % 2 === 0;
-        case exports.Patterns.PATTERN001:
-          return i % 2 === 0;
-        case exports.Patterns.PATTERN010:
-          return j % 3 === 0;
-        case exports.Patterns.PATTERN011:
-          return (i + j) % 3 === 0;
-        case exports.Patterns.PATTERN100:
-          return (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0;
-        case exports.Patterns.PATTERN101:
-          return i * j % 2 + i * j % 3 === 0;
-        case exports.Patterns.PATTERN110:
-          return (i * j % 2 + i * j % 3) % 2 === 0;
-        case exports.Patterns.PATTERN111:
-          return (i * j % 3 + (i + j) % 2) % 2 === 0;
-        default:
-          throw new Error("bad maskPattern:" + maskPattern);
-      }
-    }
-    exports.applyMask = function applyMask(pattern, data2) {
-      const size = data2.size;
-      for (let col = 0; col < size; col++) {
-        for (let row = 0; row < size; row++) {
-          if (data2.isReserved(row, col)) continue;
-          data2.xor(row, col, getMaskAt(pattern, row, col));
-        }
-      }
-    };
-    exports.getBestMask = function getBestMask(data2, setupFormatFunc) {
-      const numPatterns = Object.keys(exports.Patterns).length;
-      let bestPattern = 0;
-      let lowerPenalty = Infinity;
-      for (let p = 0; p < numPatterns; p++) {
-        setupFormatFunc(p);
-        exports.applyMask(p, data2);
-        const penalty = exports.getPenaltyN1(data2) + exports.getPenaltyN2(data2) + exports.getPenaltyN3(data2) + exports.getPenaltyN4(data2);
-        exports.applyMask(p, data2);
-        if (penalty < lowerPenalty) {
-          lowerPenalty = penalty;
-          bestPattern = p;
-        }
-      }
-      return bestPattern;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/error-correction-code.js
-var require_error_correction_code = __commonJS({
-  "node_modules/qrcode/lib/core/error-correction-code.js"(exports) {
-    var ECLevel = require_error_correction_level();
-    var EC_BLOCKS_TABLE = [
-      // L  M  Q  H
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      2,
-      2,
-      1,
-      2,
-      2,
-      4,
-      1,
-      2,
-      4,
-      4,
-      2,
-      4,
-      4,
-      4,
-      2,
-      4,
-      6,
-      5,
-      2,
-      4,
-      6,
-      6,
-      2,
-      5,
-      8,
-      8,
-      4,
-      5,
-      8,
-      8,
-      4,
-      5,
-      8,
-      11,
-      4,
-      8,
-      10,
-      11,
-      4,
-      9,
-      12,
-      16,
-      4,
-      9,
-      16,
-      16,
-      6,
-      10,
-      12,
-      18,
-      6,
-      10,
-      17,
-      16,
-      6,
-      11,
-      16,
-      19,
-      6,
-      13,
-      18,
-      21,
-      7,
-      14,
-      21,
-      25,
-      8,
-      16,
-      20,
-      25,
-      8,
-      17,
-      23,
-      25,
-      9,
-      17,
-      23,
-      34,
-      9,
-      18,
-      25,
-      30,
-      10,
-      20,
-      27,
-      32,
-      12,
-      21,
-      29,
-      35,
-      12,
-      23,
-      34,
-      37,
-      12,
-      25,
-      34,
-      40,
-      13,
-      26,
-      35,
-      42,
-      14,
-      28,
-      38,
-      45,
-      15,
-      29,
-      40,
-      48,
-      16,
-      31,
-      43,
-      51,
-      17,
-      33,
-      45,
-      54,
-      18,
-      35,
-      48,
-      57,
-      19,
-      37,
-      51,
-      60,
-      19,
-      38,
-      53,
-      63,
-      20,
-      40,
-      56,
-      66,
-      21,
-      43,
-      59,
-      70,
-      22,
-      45,
-      62,
-      74,
-      24,
-      47,
-      65,
-      77,
-      25,
-      49,
-      68,
-      81
-    ];
-    var EC_CODEWORDS_TABLE = [
-      // L  M  Q  H
-      7,
-      10,
-      13,
-      17,
-      10,
-      16,
-      22,
-      28,
-      15,
-      26,
-      36,
-      44,
-      20,
-      36,
-      52,
-      64,
-      26,
-      48,
-      72,
-      88,
-      36,
-      64,
-      96,
-      112,
-      40,
-      72,
-      108,
-      130,
-      48,
-      88,
-      132,
-      156,
-      60,
-      110,
-      160,
-      192,
-      72,
-      130,
-      192,
-      224,
-      80,
-      150,
-      224,
-      264,
-      96,
-      176,
-      260,
-      308,
-      104,
-      198,
-      288,
-      352,
-      120,
-      216,
-      320,
-      384,
-      132,
-      240,
-      360,
-      432,
-      144,
-      280,
-      408,
-      480,
-      168,
-      308,
-      448,
-      532,
-      180,
-      338,
-      504,
-      588,
-      196,
-      364,
-      546,
-      650,
-      224,
-      416,
-      600,
-      700,
-      224,
-      442,
-      644,
-      750,
-      252,
-      476,
-      690,
-      816,
-      270,
-      504,
-      750,
-      900,
-      300,
-      560,
-      810,
-      960,
-      312,
-      588,
-      870,
-      1050,
-      336,
-      644,
-      952,
-      1110,
-      360,
-      700,
-      1020,
-      1200,
-      390,
-      728,
-      1050,
-      1260,
-      420,
-      784,
-      1140,
-      1350,
-      450,
-      812,
-      1200,
-      1440,
-      480,
-      868,
-      1290,
-      1530,
-      510,
-      924,
-      1350,
-      1620,
-      540,
-      980,
-      1440,
-      1710,
-      570,
-      1036,
-      1530,
-      1800,
-      570,
-      1064,
-      1590,
-      1890,
-      600,
-      1120,
-      1680,
-      1980,
-      630,
-      1204,
-      1770,
-      2100,
-      660,
-      1260,
-      1860,
-      2220,
-      720,
-      1316,
-      1950,
-      2310,
-      750,
-      1372,
-      2040,
-      2430
-    ];
-    exports.getBlocksCount = function getBlocksCount(version2, errorCorrectionLevel) {
-      switch (errorCorrectionLevel) {
-        case ECLevel.L:
-          return EC_BLOCKS_TABLE[(version2 - 1) * 4 + 0];
-        case ECLevel.M:
-          return EC_BLOCKS_TABLE[(version2 - 1) * 4 + 1];
-        case ECLevel.Q:
-          return EC_BLOCKS_TABLE[(version2 - 1) * 4 + 2];
-        case ECLevel.H:
-          return EC_BLOCKS_TABLE[(version2 - 1) * 4 + 3];
-        default:
-          return void 0;
-      }
-    };
-    exports.getTotalCodewordsCount = function getTotalCodewordsCount(version2, errorCorrectionLevel) {
-      switch (errorCorrectionLevel) {
-        case ECLevel.L:
-          return EC_CODEWORDS_TABLE[(version2 - 1) * 4 + 0];
-        case ECLevel.M:
-          return EC_CODEWORDS_TABLE[(version2 - 1) * 4 + 1];
-        case ECLevel.Q:
-          return EC_CODEWORDS_TABLE[(version2 - 1) * 4 + 2];
-        case ECLevel.H:
-          return EC_CODEWORDS_TABLE[(version2 - 1) * 4 + 3];
-        default:
-          return void 0;
-      }
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/galois-field.js
-var require_galois_field = __commonJS({
-  "node_modules/qrcode/lib/core/galois-field.js"(exports) {
-    var EXP_TABLE = new Uint8Array(512);
-    var LOG_TABLE = new Uint8Array(256);
-    (function initTables() {
-      let x = 1;
-      for (let i = 0; i < 255; i++) {
-        EXP_TABLE[i] = x;
-        LOG_TABLE[x] = i;
-        x <<= 1;
-        if (x & 256) {
-          x ^= 285;
-        }
-      }
-      for (let i = 255; i < 512; i++) {
-        EXP_TABLE[i] = EXP_TABLE[i - 255];
-      }
-    })();
-    exports.log = function log(n) {
-      if (n < 1) throw new Error("log(" + n + ")");
-      return LOG_TABLE[n];
-    };
-    exports.exp = function exp(n) {
-      return EXP_TABLE[n];
-    };
-    exports.mul = function mul(x, y) {
-      if (x === 0 || y === 0) return 0;
-      return EXP_TABLE[LOG_TABLE[x] + LOG_TABLE[y]];
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/polynomial.js
-var require_polynomial = __commonJS({
-  "node_modules/qrcode/lib/core/polynomial.js"(exports) {
-    var GF = require_galois_field();
-    exports.mul = function mul(p1, p2) {
-      const coeff = new Uint8Array(p1.length + p2.length - 1);
-      for (let i = 0; i < p1.length; i++) {
-        for (let j = 0; j < p2.length; j++) {
-          coeff[i + j] ^= GF.mul(p1[i], p2[j]);
-        }
-      }
-      return coeff;
-    };
-    exports.mod = function mod3(divident, divisor) {
-      let result = new Uint8Array(divident);
-      while (result.length - divisor.length >= 0) {
-        const coeff = result[0];
-        for (let i = 0; i < divisor.length; i++) {
-          result[i] ^= GF.mul(divisor[i], coeff);
-        }
-        let offset = 0;
-        while (offset < result.length && result[offset] === 0) offset++;
-        result = result.slice(offset);
-      }
-      return result;
-    };
-    exports.generateECPolynomial = function generateECPolynomial(degree) {
-      let poly = new Uint8Array([1]);
-      for (let i = 0; i < degree; i++) {
-        poly = exports.mul(poly, new Uint8Array([1, GF.exp(i)]));
-      }
-      return poly;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/reed-solomon-encoder.js
-var require_reed_solomon_encoder = __commonJS({
-  "node_modules/qrcode/lib/core/reed-solomon-encoder.js"(exports, module) {
-    var Polynomial = require_polynomial();
-    function ReedSolomonEncoder(degree) {
-      this.genPoly = void 0;
-      this.degree = degree;
-      if (this.degree) this.initialize(this.degree);
-    }
-    ReedSolomonEncoder.prototype.initialize = function initialize(degree) {
-      this.degree = degree;
-      this.genPoly = Polynomial.generateECPolynomial(this.degree);
-    };
-    ReedSolomonEncoder.prototype.encode = function encode3(data2) {
-      if (!this.genPoly) {
-        throw new Error("Encoder not initialized");
-      }
-      const paddedData = new Uint8Array(data2.length + this.degree);
-      paddedData.set(data2);
-      const remainder = Polynomial.mod(paddedData, this.genPoly);
-      const start = this.degree - remainder.length;
-      if (start > 0) {
-        const buff = new Uint8Array(this.degree);
-        buff.set(remainder, start);
-        return buff;
-      }
-      return remainder;
-    };
-    module.exports = ReedSolomonEncoder;
-  }
-});
-
-// node_modules/qrcode/lib/core/version-check.js
-var require_version_check = __commonJS({
-  "node_modules/qrcode/lib/core/version-check.js"(exports) {
-    exports.isValid = function isValid(version2) {
-      return !isNaN(version2) && version2 >= 1 && version2 <= 40;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/regex.js
-var require_regex = __commonJS({
-  "node_modules/qrcode/lib/core/regex.js"(exports) {
-    var numeric = "[0-9]+";
-    var alphanumeric = "[A-Z $%*+\\-./:]+";
-    var kanji = "(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+";
-    kanji = kanji.replace(/u/g, "\\u");
-    var byte = "(?:(?![A-Z0-9 $%*+\\-./:]|" + kanji + ")(?:.|[\r\n]))+";
-    exports.KANJI = new RegExp(kanji, "g");
-    exports.BYTE_KANJI = new RegExp("[^A-Z0-9 $%*+\\-./:]+", "g");
-    exports.BYTE = new RegExp(byte, "g");
-    exports.NUMERIC = new RegExp(numeric, "g");
-    exports.ALPHANUMERIC = new RegExp(alphanumeric, "g");
-    var TEST_KANJI = new RegExp("^" + kanji + "$");
-    var TEST_NUMERIC = new RegExp("^" + numeric + "$");
-    var TEST_ALPHANUMERIC = new RegExp("^[A-Z0-9 $%*+\\-./:]+$");
-    exports.testKanji = function testKanji(str) {
-      return TEST_KANJI.test(str);
-    };
-    exports.testNumeric = function testNumeric(str) {
-      return TEST_NUMERIC.test(str);
-    };
-    exports.testAlphanumeric = function testAlphanumeric(str) {
-      return TEST_ALPHANUMERIC.test(str);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/mode.js
-var require_mode = __commonJS({
-  "node_modules/qrcode/lib/core/mode.js"(exports) {
-    var VersionCheck = require_version_check();
-    var Regex = require_regex();
-    exports.NUMERIC = {
-      id: "Numeric",
-      bit: 1 << 0,
-      ccBits: [10, 12, 14]
-    };
-    exports.ALPHANUMERIC = {
-      id: "Alphanumeric",
-      bit: 1 << 1,
-      ccBits: [9, 11, 13]
-    };
-    exports.BYTE = {
-      id: "Byte",
-      bit: 1 << 2,
-      ccBits: [8, 16, 16]
-    };
-    exports.KANJI = {
-      id: "Kanji",
-      bit: 1 << 3,
-      ccBits: [8, 10, 12]
-    };
-    exports.MIXED = {
-      bit: -1
-    };
-    exports.getCharCountIndicator = function getCharCountIndicator(mode, version2) {
-      if (!mode.ccBits) throw new Error("Invalid mode: " + mode);
-      if (!VersionCheck.isValid(version2)) {
-        throw new Error("Invalid version: " + version2);
-      }
-      if (version2 >= 1 && version2 < 10) return mode.ccBits[0];
-      else if (version2 < 27) return mode.ccBits[1];
-      return mode.ccBits[2];
-    };
-    exports.getBestModeForData = function getBestModeForData(dataStr) {
-      if (Regex.testNumeric(dataStr)) return exports.NUMERIC;
-      else if (Regex.testAlphanumeric(dataStr)) return exports.ALPHANUMERIC;
-      else if (Regex.testKanji(dataStr)) return exports.KANJI;
-      else return exports.BYTE;
-    };
-    exports.toString = function toString(mode) {
-      if (mode && mode.id) return mode.id;
-      throw new Error("Invalid mode");
-    };
-    exports.isValid = function isValid(mode) {
-      return mode && mode.bit && mode.ccBits;
-    };
-    function fromString(string4) {
-      if (typeof string4 !== "string") {
-        throw new Error("Param is not a string");
-      }
-      const lcStr = string4.toLowerCase();
-      switch (lcStr) {
-        case "numeric":
-          return exports.NUMERIC;
-        case "alphanumeric":
-          return exports.ALPHANUMERIC;
-        case "kanji":
-          return exports.KANJI;
-        case "byte":
-          return exports.BYTE;
-        default:
-          throw new Error("Unknown mode: " + string4);
-      }
-    }
-    exports.from = function from(value, defaultValue) {
-      if (exports.isValid(value)) {
-        return value;
-      }
-      try {
-        return fromString(value);
-      } catch (e) {
-        return defaultValue;
-      }
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/version.js
-var require_version = __commonJS({
-  "node_modules/qrcode/lib/core/version.js"(exports) {
-    var Utils = require_utils();
-    var ECCode = require_error_correction_code();
-    var ECLevel = require_error_correction_level();
-    var Mode = require_mode();
-    var VersionCheck = require_version_check();
-    var G18 = 1 << 12 | 1 << 11 | 1 << 10 | 1 << 9 | 1 << 8 | 1 << 5 | 1 << 2 | 1 << 0;
-    var G18_BCH = Utils.getBCHDigit(G18);
-    function getBestVersionForDataLength(mode, length, errorCorrectionLevel) {
-      for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
-        if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, mode)) {
-          return currentVersion;
-        }
-      }
-      return void 0;
-    }
-    function getReservedBitsCount(mode, version2) {
-      return Mode.getCharCountIndicator(mode, version2) + 4;
-    }
-    function getTotalBitsFromDataArray(segments, version2) {
-      let totalBits = 0;
-      segments.forEach(function(data2) {
-        const reservedBits = getReservedBitsCount(data2.mode, version2);
-        totalBits += reservedBits + data2.getBitsLength();
-      });
-      return totalBits;
-    }
-    function getBestVersionForMixedData(segments, errorCorrectionLevel) {
-      for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
-        const length = getTotalBitsFromDataArray(segments, currentVersion);
-        if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, Mode.MIXED)) {
-          return currentVersion;
-        }
-      }
-      return void 0;
-    }
-    exports.from = function from(value, defaultValue) {
-      if (VersionCheck.isValid(value)) {
-        return parseInt(value, 10);
-      }
-      return defaultValue;
-    };
-    exports.getCapacity = function getCapacity(version2, errorCorrectionLevel, mode) {
-      if (!VersionCheck.isValid(version2)) {
-        throw new Error("Invalid QR Code version");
-      }
-      if (typeof mode === "undefined") mode = Mode.BYTE;
-      const totalCodewords = Utils.getSymbolTotalCodewords(version2);
-      const ecTotalCodewords = ECCode.getTotalCodewordsCount(version2, errorCorrectionLevel);
-      const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8;
-      if (mode === Mode.MIXED) return dataTotalCodewordsBits;
-      const usableBits = dataTotalCodewordsBits - getReservedBitsCount(mode, version2);
-      switch (mode) {
-        case Mode.NUMERIC:
-          return Math.floor(usableBits / 10 * 3);
-        case Mode.ALPHANUMERIC:
-          return Math.floor(usableBits / 11 * 2);
-        case Mode.KANJI:
-          return Math.floor(usableBits / 13);
-        case Mode.BYTE:
-        default:
-          return Math.floor(usableBits / 8);
-      }
-    };
-    exports.getBestVersionForData = function getBestVersionForData(data2, errorCorrectionLevel) {
-      let seg;
-      const ecl = ECLevel.from(errorCorrectionLevel, ECLevel.M);
-      if (Array.isArray(data2)) {
-        if (data2.length > 1) {
-          return getBestVersionForMixedData(data2, ecl);
-        }
-        if (data2.length === 0) {
-          return 1;
-        }
-        seg = data2[0];
-      } else {
-        seg = data2;
-      }
-      return getBestVersionForDataLength(seg.mode, seg.getLength(), ecl);
-    };
-    exports.getEncodedBits = function getEncodedBits(version2) {
-      if (!VersionCheck.isValid(version2) || version2 < 7) {
-        throw new Error("Invalid QR Code version");
-      }
-      let d = version2 << 12;
-      while (Utils.getBCHDigit(d) - G18_BCH >= 0) {
-        d ^= G18 << Utils.getBCHDigit(d) - G18_BCH;
-      }
-      return version2 << 12 | d;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/format-info.js
-var require_format_info = __commonJS({
-  "node_modules/qrcode/lib/core/format-info.js"(exports) {
-    var Utils = require_utils();
-    var G15 = 1 << 10 | 1 << 8 | 1 << 5 | 1 << 4 | 1 << 2 | 1 << 1 | 1 << 0;
-    var G15_MASK = 1 << 14 | 1 << 12 | 1 << 10 | 1 << 4 | 1 << 1;
-    var G15_BCH = Utils.getBCHDigit(G15);
-    exports.getEncodedBits = function getEncodedBits(errorCorrectionLevel, mask) {
-      const data2 = errorCorrectionLevel.bit << 3 | mask;
-      let d = data2 << 10;
-      while (Utils.getBCHDigit(d) - G15_BCH >= 0) {
-        d ^= G15 << Utils.getBCHDigit(d) - G15_BCH;
-      }
-      return (data2 << 10 | d) ^ G15_MASK;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/numeric-data.js
-var require_numeric_data = __commonJS({
-  "node_modules/qrcode/lib/core/numeric-data.js"(exports, module) {
-    var Mode = require_mode();
-    function NumericData(data2) {
-      this.mode = Mode.NUMERIC;
-      this.data = data2.toString();
-    }
-    NumericData.getBitsLength = function getBitsLength(length) {
-      return 10 * Math.floor(length / 3) + (length % 3 ? length % 3 * 3 + 1 : 0);
-    };
-    NumericData.prototype.getLength = function getLength() {
-      return this.data.length;
-    };
-    NumericData.prototype.getBitsLength = function getBitsLength() {
-      return NumericData.getBitsLength(this.data.length);
-    };
-    NumericData.prototype.write = function write(bitBuffer) {
-      let i, group, value;
-      for (i = 0; i + 3 <= this.data.length; i += 3) {
-        group = this.data.substr(i, 3);
-        value = parseInt(group, 10);
-        bitBuffer.put(value, 10);
-      }
-      const remainingNum = this.data.length - i;
-      if (remainingNum > 0) {
-        group = this.data.substr(i);
-        value = parseInt(group, 10);
-        bitBuffer.put(value, remainingNum * 3 + 1);
-      }
-    };
-    module.exports = NumericData;
-  }
-});
-
-// node_modules/qrcode/lib/core/alphanumeric-data.js
-var require_alphanumeric_data = __commonJS({
-  "node_modules/qrcode/lib/core/alphanumeric-data.js"(exports, module) {
-    var Mode = require_mode();
-    var ALPHA_NUM_CHARS = [
-      "0",
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
-      "A",
-      "B",
-      "C",
-      "D",
-      "E",
-      "F",
-      "G",
-      "H",
-      "I",
-      "J",
-      "K",
-      "L",
-      "M",
-      "N",
-      "O",
-      "P",
-      "Q",
-      "R",
-      "S",
-      "T",
-      "U",
-      "V",
-      "W",
-      "X",
-      "Y",
-      "Z",
-      " ",
-      "$",
-      "%",
-      "*",
-      "+",
-      "-",
-      ".",
-      "/",
-      ":"
-    ];
-    function AlphanumericData(data2) {
-      this.mode = Mode.ALPHANUMERIC;
-      this.data = data2;
-    }
-    AlphanumericData.getBitsLength = function getBitsLength(length) {
-      return 11 * Math.floor(length / 2) + 6 * (length % 2);
-    };
-    AlphanumericData.prototype.getLength = function getLength() {
-      return this.data.length;
-    };
-    AlphanumericData.prototype.getBitsLength = function getBitsLength() {
-      return AlphanumericData.getBitsLength(this.data.length);
-    };
-    AlphanumericData.prototype.write = function write(bitBuffer) {
-      let i;
-      for (i = 0; i + 2 <= this.data.length; i += 2) {
-        let value = ALPHA_NUM_CHARS.indexOf(this.data[i]) * 45;
-        value += ALPHA_NUM_CHARS.indexOf(this.data[i + 1]);
-        bitBuffer.put(value, 11);
-      }
-      if (this.data.length % 2) {
-        bitBuffer.put(ALPHA_NUM_CHARS.indexOf(this.data[i]), 6);
-      }
-    };
-    module.exports = AlphanumericData;
-  }
-});
-
-// node_modules/qrcode/lib/core/byte-data.js
-var require_byte_data = __commonJS({
-  "node_modules/qrcode/lib/core/byte-data.js"(exports, module) {
-    var Mode = require_mode();
-    function ByteData(data2) {
-      this.mode = Mode.BYTE;
-      if (typeof data2 === "string") {
-        this.data = new TextEncoder().encode(data2);
-      } else {
-        this.data = new Uint8Array(data2);
-      }
-    }
-    ByteData.getBitsLength = function getBitsLength(length) {
-      return length * 8;
-    };
-    ByteData.prototype.getLength = function getLength() {
-      return this.data.length;
-    };
-    ByteData.prototype.getBitsLength = function getBitsLength() {
-      return ByteData.getBitsLength(this.data.length);
-    };
-    ByteData.prototype.write = function(bitBuffer) {
-      for (let i = 0, l = this.data.length; i < l; i++) {
-        bitBuffer.put(this.data[i], 8);
-      }
-    };
-    module.exports = ByteData;
-  }
-});
-
-// node_modules/qrcode/lib/core/kanji-data.js
-var require_kanji_data = __commonJS({
-  "node_modules/qrcode/lib/core/kanji-data.js"(exports, module) {
-    var Mode = require_mode();
-    var Utils = require_utils();
-    function KanjiData(data2) {
-      this.mode = Mode.KANJI;
-      this.data = data2;
-    }
-    KanjiData.getBitsLength = function getBitsLength(length) {
-      return length * 13;
-    };
-    KanjiData.prototype.getLength = function getLength() {
-      return this.data.length;
-    };
-    KanjiData.prototype.getBitsLength = function getBitsLength() {
-      return KanjiData.getBitsLength(this.data.length);
-    };
-    KanjiData.prototype.write = function(bitBuffer) {
-      let i;
-      for (i = 0; i < this.data.length; i++) {
-        let value = Utils.toSJIS(this.data[i]);
-        if (value >= 33088 && value <= 40956) {
-          value -= 33088;
-        } else if (value >= 57408 && value <= 60351) {
-          value -= 49472;
-        } else {
-          throw new Error(
-            "Invalid SJIS character: " + this.data[i] + "\nMake sure your charset is UTF-8"
-          );
-        }
-        value = (value >>> 8 & 255) * 192 + (value & 255);
-        bitBuffer.put(value, 13);
-      }
-    };
-    module.exports = KanjiData;
-  }
-});
-
-// node_modules/dijkstrajs/dijkstra.js
-var require_dijkstra = __commonJS({
-  "node_modules/dijkstrajs/dijkstra.js"(exports, module) {
-    "use strict";
-    var dijkstra = {
-      single_source_shortest_paths: function(graph, s, d) {
-        var predecessors = {};
-        var costs = {};
-        costs[s] = 0;
-        var open2 = dijkstra.PriorityQueue.make();
-        open2.push(s, 0);
-        var closest, u, v, cost_of_s_to_u, adjacent_nodes, cost_of_e, cost_of_s_to_u_plus_cost_of_e, cost_of_s_to_v, first_visit;
-        while (!open2.empty()) {
-          closest = open2.pop();
-          u = closest.value;
-          cost_of_s_to_u = closest.cost;
-          adjacent_nodes = graph[u] || {};
-          for (v in adjacent_nodes) {
-            if (adjacent_nodes.hasOwnProperty(v)) {
-              cost_of_e = adjacent_nodes[v];
-              cost_of_s_to_u_plus_cost_of_e = cost_of_s_to_u + cost_of_e;
-              cost_of_s_to_v = costs[v];
-              first_visit = typeof costs[v] === "undefined";
-              if (first_visit || cost_of_s_to_v > cost_of_s_to_u_plus_cost_of_e) {
-                costs[v] = cost_of_s_to_u_plus_cost_of_e;
-                open2.push(v, cost_of_s_to_u_plus_cost_of_e);
-                predecessors[v] = u;
-              }
-            }
-          }
-        }
-        if (typeof d !== "undefined" && typeof costs[d] === "undefined") {
-          var msg = ["Could not find a path from ", s, " to ", d, "."].join("");
-          throw new Error(msg);
-        }
-        return predecessors;
-      },
-      extract_shortest_path_from_predecessor_list: function(predecessors, d) {
-        var nodes = [];
-        var u = d;
-        var predecessor;
-        while (u) {
-          nodes.push(u);
-          predecessor = predecessors[u];
-          u = predecessors[u];
-        }
-        nodes.reverse();
-        return nodes;
-      },
-      find_path: function(graph, s, d) {
-        var predecessors = dijkstra.single_source_shortest_paths(graph, s, d);
-        return dijkstra.extract_shortest_path_from_predecessor_list(
-          predecessors,
-          d
-        );
-      },
-      /**
-       * A very naive priority queue implementation.
-       */
-      PriorityQueue: {
-        make: function(opts) {
-          var T = dijkstra.PriorityQueue, t = {}, key;
-          opts = opts || {};
-          for (key in T) {
-            if (T.hasOwnProperty(key)) {
-              t[key] = T[key];
-            }
-          }
-          t.queue = [];
-          t.sorter = opts.sorter || T.default_sorter;
-          return t;
-        },
-        default_sorter: function(a, b) {
-          return a.cost - b.cost;
-        },
-        /**
-         * Add a new item to the queue and ensure the highest priority element
-         * is at the front of the queue.
-         */
-        push: function(value, cost) {
-          var item = { value, cost };
-          this.queue.push(item);
-          this.queue.sort(this.sorter);
-        },
-        /**
-         * Return the highest priority element in the queue.
-         */
-        pop: function() {
-          return this.queue.shift();
-        },
-        empty: function() {
-          return this.queue.length === 0;
-        }
-      }
-    };
-    if (typeof module !== "undefined") {
-      module.exports = dijkstra;
-    }
-  }
-});
-
-// node_modules/qrcode/lib/core/segments.js
-var require_segments = __commonJS({
-  "node_modules/qrcode/lib/core/segments.js"(exports) {
-    var Mode = require_mode();
-    var NumericData = require_numeric_data();
-    var AlphanumericData = require_alphanumeric_data();
-    var ByteData = require_byte_data();
-    var KanjiData = require_kanji_data();
-    var Regex = require_regex();
-    var Utils = require_utils();
-    var dijkstra = require_dijkstra();
-    function getStringByteLength(str) {
-      return unescape(encodeURIComponent(str)).length;
-    }
-    function getSegments(regex, mode, str) {
-      const segments = [];
-      let result;
-      while ((result = regex.exec(str)) !== null) {
-        segments.push({
-          data: result[0],
-          index: result.index,
-          mode,
-          length: result[0].length
-        });
-      }
-      return segments;
-    }
-    function getSegmentsFromString(dataStr) {
-      const numSegs = getSegments(Regex.NUMERIC, Mode.NUMERIC, dataStr);
-      const alphaNumSegs = getSegments(Regex.ALPHANUMERIC, Mode.ALPHANUMERIC, dataStr);
-      let byteSegs;
-      let kanjiSegs;
-      if (Utils.isKanjiModeEnabled()) {
-        byteSegs = getSegments(Regex.BYTE, Mode.BYTE, dataStr);
-        kanjiSegs = getSegments(Regex.KANJI, Mode.KANJI, dataStr);
-      } else {
-        byteSegs = getSegments(Regex.BYTE_KANJI, Mode.BYTE, dataStr);
-        kanjiSegs = [];
-      }
-      const segs = numSegs.concat(alphaNumSegs, byteSegs, kanjiSegs);
-      return segs.sort(function(s1, s2) {
-        return s1.index - s2.index;
-      }).map(function(obj) {
-        return {
-          data: obj.data,
-          mode: obj.mode,
-          length: obj.length
-        };
-      });
-    }
-    function getSegmentBitsLength(length, mode) {
-      switch (mode) {
-        case Mode.NUMERIC:
-          return NumericData.getBitsLength(length);
-        case Mode.ALPHANUMERIC:
-          return AlphanumericData.getBitsLength(length);
-        case Mode.KANJI:
-          return KanjiData.getBitsLength(length);
-        case Mode.BYTE:
-          return ByteData.getBitsLength(length);
-      }
-    }
-    function mergeSegments(segs) {
-      return segs.reduce(function(acc, curr) {
-        const prevSeg = acc.length - 1 >= 0 ? acc[acc.length - 1] : null;
-        if (prevSeg && prevSeg.mode === curr.mode) {
-          acc[acc.length - 1].data += curr.data;
-          return acc;
-        }
-        acc.push(curr);
-        return acc;
-      }, []);
-    }
-    function buildNodes(segs) {
-      const nodes = [];
-      for (let i = 0; i < segs.length; i++) {
-        const seg = segs[i];
-        switch (seg.mode) {
-          case Mode.NUMERIC:
-            nodes.push([
-              seg,
-              { data: seg.data, mode: Mode.ALPHANUMERIC, length: seg.length },
-              { data: seg.data, mode: Mode.BYTE, length: seg.length }
-            ]);
-            break;
-          case Mode.ALPHANUMERIC:
-            nodes.push([
-              seg,
-              { data: seg.data, mode: Mode.BYTE, length: seg.length }
-            ]);
-            break;
-          case Mode.KANJI:
-            nodes.push([
-              seg,
-              { data: seg.data, mode: Mode.BYTE, length: getStringByteLength(seg.data) }
-            ]);
-            break;
-          case Mode.BYTE:
-            nodes.push([
-              { data: seg.data, mode: Mode.BYTE, length: getStringByteLength(seg.data) }
-            ]);
-        }
-      }
-      return nodes;
-    }
-    function buildGraph(nodes, version2) {
-      const table = {};
-      const graph = { start: {} };
-      let prevNodeIds = ["start"];
-      for (let i = 0; i < nodes.length; i++) {
-        const nodeGroup = nodes[i];
-        const currentNodeIds = [];
-        for (let j = 0; j < nodeGroup.length; j++) {
-          const node2 = nodeGroup[j];
-          const key = "" + i + j;
-          currentNodeIds.push(key);
-          table[key] = { node: node2, lastCount: 0 };
-          graph[key] = {};
-          for (let n = 0; n < prevNodeIds.length; n++) {
-            const prevNodeId = prevNodeIds[n];
-            if (table[prevNodeId] && table[prevNodeId].node.mode === node2.mode) {
-              graph[prevNodeId][key] = getSegmentBitsLength(table[prevNodeId].lastCount + node2.length, node2.mode) - getSegmentBitsLength(table[prevNodeId].lastCount, node2.mode);
-              table[prevNodeId].lastCount += node2.length;
-            } else {
-              if (table[prevNodeId]) table[prevNodeId].lastCount = node2.length;
-              graph[prevNodeId][key] = getSegmentBitsLength(node2.length, node2.mode) + 4 + Mode.getCharCountIndicator(node2.mode, version2);
-            }
-          }
-        }
-        prevNodeIds = currentNodeIds;
-      }
-      for (let n = 0; n < prevNodeIds.length; n++) {
-        graph[prevNodeIds[n]].end = 0;
-      }
-      return { map: graph, table };
-    }
-    function buildSingleSegment(data2, modesHint) {
-      let mode;
-      const bestMode = Mode.getBestModeForData(data2);
-      mode = Mode.from(modesHint, bestMode);
-      if (mode !== Mode.BYTE && mode.bit < bestMode.bit) {
-        throw new Error('"' + data2 + '" cannot be encoded with mode ' + Mode.toString(mode) + ".\n Suggested mode is: " + Mode.toString(bestMode));
-      }
-      if (mode === Mode.KANJI && !Utils.isKanjiModeEnabled()) {
-        mode = Mode.BYTE;
-      }
-      switch (mode) {
-        case Mode.NUMERIC:
-          return new NumericData(data2);
-        case Mode.ALPHANUMERIC:
-          return new AlphanumericData(data2);
-        case Mode.KANJI:
-          return new KanjiData(data2);
-        case Mode.BYTE:
-          return new ByteData(data2);
-      }
-    }
-    exports.fromArray = function fromArray(array2) {
-      return array2.reduce(function(acc, seg) {
-        if (typeof seg === "string") {
-          acc.push(buildSingleSegment(seg, null));
-        } else if (seg.data) {
-          acc.push(buildSingleSegment(seg.data, seg.mode));
-        }
-        return acc;
-      }, []);
-    };
-    exports.fromString = function fromString(data2, version2) {
-      const segs = getSegmentsFromString(data2, Utils.isKanjiModeEnabled());
-      const nodes = buildNodes(segs);
-      const graph = buildGraph(nodes, version2);
-      const path = dijkstra.find_path(graph.map, "start", "end");
-      const optimizedSegs = [];
-      for (let i = 1; i < path.length - 1; i++) {
-        optimizedSegs.push(graph.table[path[i]].node);
-      }
-      return exports.fromArray(mergeSegments(optimizedSegs));
-    };
-    exports.rawSplit = function rawSplit(data2) {
-      return exports.fromArray(
-        getSegmentsFromString(data2, Utils.isKanjiModeEnabled())
-      );
-    };
-  }
-});
-
-// node_modules/qrcode/lib/core/qrcode.js
-var require_qrcode = __commonJS({
-  "node_modules/qrcode/lib/core/qrcode.js"(exports) {
-    var Utils = require_utils();
-    var ECLevel = require_error_correction_level();
-    var BitBuffer = require_bit_buffer();
-    var BitMatrix = require_bit_matrix();
-    var AlignmentPattern = require_alignment_pattern();
-    var FinderPattern = require_finder_pattern();
-    var MaskPattern = require_mask_pattern();
-    var ECCode = require_error_correction_code();
-    var ReedSolomonEncoder = require_reed_solomon_encoder();
-    var Version = require_version();
-    var FormatInfo = require_format_info();
-    var Mode = require_mode();
-    var Segments = require_segments();
-    function setupFinderPattern(matrix, version2) {
-      const size = matrix.size;
-      const pos = FinderPattern.getPositions(version2);
-      for (let i = 0; i < pos.length; i++) {
-        const row = pos[i][0];
-        const col = pos[i][1];
-        for (let r = -1; r <= 7; r++) {
-          if (row + r <= -1 || size <= row + r) continue;
-          for (let c = -1; c <= 7; c++) {
-            if (col + c <= -1 || size <= col + c) continue;
-            if (r >= 0 && r <= 6 && (c === 0 || c === 6) || c >= 0 && c <= 6 && (r === 0 || r === 6) || r >= 2 && r <= 4 && c >= 2 && c <= 4) {
-              matrix.set(row + r, col + c, true, true);
-            } else {
-              matrix.set(row + r, col + c, false, true);
-            }
-          }
-        }
-      }
-    }
-    function setupTimingPattern(matrix) {
-      const size = matrix.size;
-      for (let r = 8; r < size - 8; r++) {
-        const value = r % 2 === 0;
-        matrix.set(r, 6, value, true);
-        matrix.set(6, r, value, true);
-      }
-    }
-    function setupAlignmentPattern(matrix, version2) {
-      const pos = AlignmentPattern.getPositions(version2);
-      for (let i = 0; i < pos.length; i++) {
-        const row = pos[i][0];
-        const col = pos[i][1];
-        for (let r = -2; r <= 2; r++) {
-          for (let c = -2; c <= 2; c++) {
-            if (r === -2 || r === 2 || c === -2 || c === 2 || r === 0 && c === 0) {
-              matrix.set(row + r, col + c, true, true);
-            } else {
-              matrix.set(row + r, col + c, false, true);
-            }
-          }
-        }
-      }
-    }
-    function setupVersionInfo(matrix, version2) {
-      const size = matrix.size;
-      const bits = Version.getEncodedBits(version2);
-      let row, col, mod3;
-      for (let i = 0; i < 18; i++) {
-        row = Math.floor(i / 3);
-        col = i % 3 + size - 8 - 3;
-        mod3 = (bits >> i & 1) === 1;
-        matrix.set(row, col, mod3, true);
-        matrix.set(col, row, mod3, true);
-      }
-    }
-    function setupFormatInfo(matrix, errorCorrectionLevel, maskPattern) {
-      const size = matrix.size;
-      const bits = FormatInfo.getEncodedBits(errorCorrectionLevel, maskPattern);
-      let i, mod3;
-      for (i = 0; i < 15; i++) {
-        mod3 = (bits >> i & 1) === 1;
-        if (i < 6) {
-          matrix.set(i, 8, mod3, true);
-        } else if (i < 8) {
-          matrix.set(i + 1, 8, mod3, true);
-        } else {
-          matrix.set(size - 15 + i, 8, mod3, true);
-        }
-        if (i < 8) {
-          matrix.set(8, size - i - 1, mod3, true);
-        } else if (i < 9) {
-          matrix.set(8, 15 - i - 1 + 1, mod3, true);
-        } else {
-          matrix.set(8, 15 - i - 1, mod3, true);
-        }
-      }
-      matrix.set(size - 8, 8, 1, true);
-    }
-    function setupData(matrix, data2) {
-      const size = matrix.size;
-      let inc = -1;
-      let row = size - 1;
-      let bitIndex = 7;
-      let byteIndex = 0;
-      for (let col = size - 1; col > 0; col -= 2) {
-        if (col === 6) col--;
-        while (true) {
-          for (let c = 0; c < 2; c++) {
-            if (!matrix.isReserved(row, col - c)) {
-              let dark = false;
-              if (byteIndex < data2.length) {
-                dark = (data2[byteIndex] >>> bitIndex & 1) === 1;
-              }
-              matrix.set(row, col - c, dark);
-              bitIndex--;
-              if (bitIndex === -1) {
-                byteIndex++;
-                bitIndex = 7;
-              }
-            }
-          }
-          row += inc;
-          if (row < 0 || size <= row) {
-            row -= inc;
-            inc = -inc;
-            break;
-          }
-        }
-      }
-    }
-    function createData(version2, errorCorrectionLevel, segments) {
-      const buffer = new BitBuffer();
-      segments.forEach(function(data2) {
-        buffer.put(data2.mode.bit, 4);
-        buffer.put(data2.getLength(), Mode.getCharCountIndicator(data2.mode, version2));
-        data2.write(buffer);
-      });
-      const totalCodewords = Utils.getSymbolTotalCodewords(version2);
-      const ecTotalCodewords = ECCode.getTotalCodewordsCount(version2, errorCorrectionLevel);
-      const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8;
-      if (buffer.getLengthInBits() + 4 <= dataTotalCodewordsBits) {
-        buffer.put(0, 4);
-      }
-      while (buffer.getLengthInBits() % 8 !== 0) {
-        buffer.putBit(0);
-      }
-      const remainingByte = (dataTotalCodewordsBits - buffer.getLengthInBits()) / 8;
-      for (let i = 0; i < remainingByte; i++) {
-        buffer.put(i % 2 ? 17 : 236, 8);
-      }
-      return createCodewords(buffer, version2, errorCorrectionLevel);
-    }
-    function createCodewords(bitBuffer, version2, errorCorrectionLevel) {
-      const totalCodewords = Utils.getSymbolTotalCodewords(version2);
-      const ecTotalCodewords = ECCode.getTotalCodewordsCount(version2, errorCorrectionLevel);
-      const dataTotalCodewords = totalCodewords - ecTotalCodewords;
-      const ecTotalBlocks = ECCode.getBlocksCount(version2, errorCorrectionLevel);
-      const blocksInGroup2 = totalCodewords % ecTotalBlocks;
-      const blocksInGroup1 = ecTotalBlocks - blocksInGroup2;
-      const totalCodewordsInGroup1 = Math.floor(totalCodewords / ecTotalBlocks);
-      const dataCodewordsInGroup1 = Math.floor(dataTotalCodewords / ecTotalBlocks);
-      const dataCodewordsInGroup2 = dataCodewordsInGroup1 + 1;
-      const ecCount = totalCodewordsInGroup1 - dataCodewordsInGroup1;
-      const rs = new ReedSolomonEncoder(ecCount);
-      let offset = 0;
-      const dcData = new Array(ecTotalBlocks);
-      const ecData = new Array(ecTotalBlocks);
-      let maxDataSize = 0;
-      const buffer = new Uint8Array(bitBuffer.buffer);
-      for (let b = 0; b < ecTotalBlocks; b++) {
-        const dataSize = b < blocksInGroup1 ? dataCodewordsInGroup1 : dataCodewordsInGroup2;
-        dcData[b] = buffer.slice(offset, offset + dataSize);
-        ecData[b] = rs.encode(dcData[b]);
-        offset += dataSize;
-        maxDataSize = Math.max(maxDataSize, dataSize);
-      }
-      const data2 = new Uint8Array(totalCodewords);
-      let index = 0;
-      let i, r;
-      for (i = 0; i < maxDataSize; i++) {
-        for (r = 0; r < ecTotalBlocks; r++) {
-          if (i < dcData[r].length) {
-            data2[index++] = dcData[r][i];
-          }
-        }
-      }
-      for (i = 0; i < ecCount; i++) {
-        for (r = 0; r < ecTotalBlocks; r++) {
-          data2[index++] = ecData[r][i];
-        }
-      }
-      return data2;
-    }
-    function createSymbol(data2, version2, errorCorrectionLevel, maskPattern) {
-      let segments;
-      if (Array.isArray(data2)) {
-        segments = Segments.fromArray(data2);
-      } else if (typeof data2 === "string") {
-        let estimatedVersion = version2;
-        if (!estimatedVersion) {
-          const rawSegments = Segments.rawSplit(data2);
-          estimatedVersion = Version.getBestVersionForData(rawSegments, errorCorrectionLevel);
-        }
-        segments = Segments.fromString(data2, estimatedVersion || 40);
-      } else {
-        throw new Error("Invalid data");
-      }
-      const bestVersion = Version.getBestVersionForData(segments, errorCorrectionLevel);
-      if (!bestVersion) {
-        throw new Error("The amount of data is too big to be stored in a QR Code");
-      }
-      if (!version2) {
-        version2 = bestVersion;
-      } else if (version2 < bestVersion) {
-        throw new Error(
-          "\nThe chosen QR Code version cannot contain this amount of data.\nMinimum version required to store current data is: " + bestVersion + ".\n"
-        );
-      }
-      const dataBits = createData(version2, errorCorrectionLevel, segments);
-      const moduleCount = Utils.getSymbolSize(version2);
-      const modules = new BitMatrix(moduleCount);
-      setupFinderPattern(modules, version2);
-      setupTimingPattern(modules);
-      setupAlignmentPattern(modules, version2);
-      setupFormatInfo(modules, errorCorrectionLevel, 0);
-      if (version2 >= 7) {
-        setupVersionInfo(modules, version2);
-      }
-      setupData(modules, dataBits);
-      if (isNaN(maskPattern)) {
-        maskPattern = MaskPattern.getBestMask(
-          modules,
-          setupFormatInfo.bind(null, modules, errorCorrectionLevel)
-        );
-      }
-      MaskPattern.applyMask(maskPattern, modules);
-      setupFormatInfo(modules, errorCorrectionLevel, maskPattern);
-      return {
-        modules,
-        version: version2,
-        errorCorrectionLevel,
-        maskPattern,
-        segments
-      };
-    }
-    exports.create = function create(data2, options) {
-      if (typeof data2 === "undefined" || data2 === "") {
-        throw new Error("No input text");
-      }
-      let errorCorrectionLevel = ECLevel.M;
-      let version2;
-      let mask;
-      if (typeof options !== "undefined") {
-        errorCorrectionLevel = ECLevel.from(options.errorCorrectionLevel, ECLevel.M);
-        version2 = Version.from(options.version);
-        mask = MaskPattern.from(options.maskPattern);
-        if (options.toSJISFunc) {
-          Utils.setToSJISFunction(options.toSJISFunc);
-        }
-      }
-      return createSymbol(data2, version2, errorCorrectionLevel, mask);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/chunkstream.js
-var require_chunkstream = __commonJS({
-  "node_modules/pngjs/lib/chunkstream.js"(exports, module) {
-    "use strict";
-    var util = __require("util");
-    var Stream = __require("stream");
-    var ChunkStream = module.exports = function() {
-      Stream.call(this);
-      this._buffers = [];
-      this._buffered = 0;
-      this._reads = [];
-      this._paused = false;
-      this._encoding = "utf8";
-      this.writable = true;
-    };
-    util.inherits(ChunkStream, Stream);
-    ChunkStream.prototype.read = function(length, callback) {
-      this._reads.push({
-        length: Math.abs(length),
-        // if length < 0 then at most this length
-        allowLess: length < 0,
-        func: callback
-      });
-      process.nextTick(
-        function() {
-          this._process();
-          if (this._paused && this._reads && this._reads.length > 0) {
-            this._paused = false;
-            this.emit("drain");
-          }
-        }.bind(this)
-      );
-    };
-    ChunkStream.prototype.write = function(data2, encoding) {
-      if (!this.writable) {
-        this.emit("error", new Error("Stream not writable"));
-        return false;
-      }
-      let dataBuffer;
-      if (Buffer.isBuffer(data2)) {
-        dataBuffer = data2;
-      } else {
-        dataBuffer = Buffer.from(data2, encoding || this._encoding);
-      }
-      this._buffers.push(dataBuffer);
-      this._buffered += dataBuffer.length;
-      this._process();
-      if (this._reads && this._reads.length === 0) {
-        this._paused = true;
-      }
-      return this.writable && !this._paused;
-    };
-    ChunkStream.prototype.end = function(data2, encoding) {
-      if (data2) {
-        this.write(data2, encoding);
-      }
-      this.writable = false;
-      if (!this._buffers) {
-        return;
-      }
-      if (this._buffers.length === 0) {
-        this._end();
-      } else {
-        this._buffers.push(null);
-        this._process();
-      }
-    };
-    ChunkStream.prototype.destroySoon = ChunkStream.prototype.end;
-    ChunkStream.prototype._end = function() {
-      if (this._reads.length > 0) {
-        this.emit("error", new Error("Unexpected end of input"));
-      }
-      this.destroy();
-    };
-    ChunkStream.prototype.destroy = function() {
-      if (!this._buffers) {
-        return;
-      }
-      this.writable = false;
-      this._reads = null;
-      this._buffers = null;
-      this.emit("close");
-    };
-    ChunkStream.prototype._processReadAllowingLess = function(read) {
-      this._reads.shift();
-      let smallerBuf = this._buffers[0];
-      if (smallerBuf.length > read.length) {
-        this._buffered -= read.length;
-        this._buffers[0] = smallerBuf.slice(read.length);
-        read.func.call(this, smallerBuf.slice(0, read.length));
-      } else {
-        this._buffered -= smallerBuf.length;
-        this._buffers.shift();
-        read.func.call(this, smallerBuf);
-      }
-    };
-    ChunkStream.prototype._processRead = function(read) {
-      this._reads.shift();
-      let pos = 0;
-      let count = 0;
-      let data2 = Buffer.alloc(read.length);
-      while (pos < read.length) {
-        let buf = this._buffers[count++];
-        let len = Math.min(buf.length, read.length - pos);
-        buf.copy(data2, pos, 0, len);
-        pos += len;
-        if (len !== buf.length) {
-          this._buffers[--count] = buf.slice(len);
-        }
-      }
-      if (count > 0) {
-        this._buffers.splice(0, count);
-      }
-      this._buffered -= read.length;
-      read.func.call(this, data2);
-    };
-    ChunkStream.prototype._process = function() {
-      try {
-        while (this._buffered > 0 && this._reads && this._reads.length > 0) {
-          let read = this._reads[0];
-          if (read.allowLess) {
-            this._processReadAllowingLess(read);
-          } else if (this._buffered >= read.length) {
-            this._processRead(read);
-          } else {
-            break;
-          }
-        }
-        if (this._buffers && !this.writable) {
-          this._end();
-        }
-      } catch (ex) {
-        this.emit("error", ex);
-      }
-    };
-  }
-});
-
-// node_modules/pngjs/lib/interlace.js
-var require_interlace = __commonJS({
-  "node_modules/pngjs/lib/interlace.js"(exports) {
-    "use strict";
-    var imagePasses = [
-      {
-        // pass 1 - 1px
-        x: [0],
-        y: [0]
-      },
-      {
-        // pass 2 - 1px
-        x: [4],
-        y: [0]
-      },
-      {
-        // pass 3 - 2px
-        x: [0, 4],
-        y: [4]
-      },
-      {
-        // pass 4 - 4px
-        x: [2, 6],
-        y: [0, 4]
-      },
-      {
-        // pass 5 - 8px
-        x: [0, 2, 4, 6],
-        y: [2, 6]
-      },
-      {
-        // pass 6 - 16px
-        x: [1, 3, 5, 7],
-        y: [0, 2, 4, 6]
-      },
-      {
-        // pass 7 - 32px
-        x: [0, 1, 2, 3, 4, 5, 6, 7],
-        y: [1, 3, 5, 7]
-      }
-    ];
-    exports.getImagePasses = function(width, height) {
-      let images = [];
-      let xLeftOver = width % 8;
-      let yLeftOver = height % 8;
-      let xRepeats = (width - xLeftOver) / 8;
-      let yRepeats = (height - yLeftOver) / 8;
-      for (let i = 0; i < imagePasses.length; i++) {
-        let pass = imagePasses[i];
-        let passWidth = xRepeats * pass.x.length;
-        let passHeight = yRepeats * pass.y.length;
-        for (let j = 0; j < pass.x.length; j++) {
-          if (pass.x[j] < xLeftOver) {
-            passWidth++;
-          } else {
-            break;
-          }
-        }
-        for (let j = 0; j < pass.y.length; j++) {
-          if (pass.y[j] < yLeftOver) {
-            passHeight++;
-          } else {
-            break;
-          }
-        }
-        if (passWidth > 0 && passHeight > 0) {
-          images.push({ width: passWidth, height: passHeight, index: i });
-        }
-      }
-      return images;
-    };
-    exports.getInterlaceIterator = function(width) {
-      return function(x, y, pass) {
-        let outerXLeftOver = x % imagePasses[pass].x.length;
-        let outerX = (x - outerXLeftOver) / imagePasses[pass].x.length * 8 + imagePasses[pass].x[outerXLeftOver];
-        let outerYLeftOver = y % imagePasses[pass].y.length;
-        let outerY = (y - outerYLeftOver) / imagePasses[pass].y.length * 8 + imagePasses[pass].y[outerYLeftOver];
-        return outerX * 4 + outerY * width * 4;
-      };
-    };
-  }
-});
-
-// node_modules/pngjs/lib/paeth-predictor.js
-var require_paeth_predictor = __commonJS({
-  "node_modules/pngjs/lib/paeth-predictor.js"(exports, module) {
-    "use strict";
-    module.exports = function paethPredictor(left, above, upLeft) {
-      let paeth = left + above - upLeft;
-      let pLeft = Math.abs(paeth - left);
-      let pAbove = Math.abs(paeth - above);
-      let pUpLeft = Math.abs(paeth - upLeft);
-      if (pLeft <= pAbove && pLeft <= pUpLeft) {
-        return left;
-      }
-      if (pAbove <= pUpLeft) {
-        return above;
-      }
-      return upLeft;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/filter-parse.js
-var require_filter_parse = __commonJS({
-  "node_modules/pngjs/lib/filter-parse.js"(exports, module) {
-    "use strict";
-    var interlaceUtils = require_interlace();
-    var paethPredictor = require_paeth_predictor();
-    function getByteWidth(width, bpp, depth) {
-      let byteWidth = width * bpp;
-      if (depth !== 8) {
-        byteWidth = Math.ceil(byteWidth / (8 / depth));
-      }
-      return byteWidth;
-    }
-    var Filter = module.exports = function(bitmapInfo, dependencies) {
-      let width = bitmapInfo.width;
-      let height = bitmapInfo.height;
-      let interlace = bitmapInfo.interlace;
-      let bpp = bitmapInfo.bpp;
-      let depth = bitmapInfo.depth;
-      this.read = dependencies.read;
-      this.write = dependencies.write;
-      this.complete = dependencies.complete;
-      this._imageIndex = 0;
-      this._images = [];
-      if (interlace) {
-        let passes = interlaceUtils.getImagePasses(width, height);
-        for (let i = 0; i < passes.length; i++) {
-          this._images.push({
-            byteWidth: getByteWidth(passes[i].width, bpp, depth),
-            height: passes[i].height,
-            lineIndex: 0
-          });
-        }
-      } else {
-        this._images.push({
-          byteWidth: getByteWidth(width, bpp, depth),
-          height,
-          lineIndex: 0
-        });
-      }
-      if (depth === 8) {
-        this._xComparison = bpp;
-      } else if (depth === 16) {
-        this._xComparison = bpp * 2;
-      } else {
-        this._xComparison = 1;
-      }
-    };
-    Filter.prototype.start = function() {
-      this.read(
-        this._images[this._imageIndex].byteWidth + 1,
-        this._reverseFilterLine.bind(this)
-      );
-    };
-    Filter.prototype._unFilterType1 = function(rawData, unfilteredLine, byteWidth) {
-      let xComparison = this._xComparison;
-      let xBiggerThan = xComparison - 1;
-      for (let x = 0; x < byteWidth; x++) {
-        let rawByte = rawData[1 + x];
-        let f1Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
-        unfilteredLine[x] = rawByte + f1Left;
-      }
-    };
-    Filter.prototype._unFilterType2 = function(rawData, unfilteredLine, byteWidth) {
-      let lastLine = this._lastLine;
-      for (let x = 0; x < byteWidth; x++) {
-        let rawByte = rawData[1 + x];
-        let f2Up = lastLine ? lastLine[x] : 0;
-        unfilteredLine[x] = rawByte + f2Up;
-      }
-    };
-    Filter.prototype._unFilterType3 = function(rawData, unfilteredLine, byteWidth) {
-      let xComparison = this._xComparison;
-      let xBiggerThan = xComparison - 1;
-      let lastLine = this._lastLine;
-      for (let x = 0; x < byteWidth; x++) {
-        let rawByte = rawData[1 + x];
-        let f3Up = lastLine ? lastLine[x] : 0;
-        let f3Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
-        let f3Add = Math.floor((f3Left + f3Up) / 2);
-        unfilteredLine[x] = rawByte + f3Add;
-      }
-    };
-    Filter.prototype._unFilterType4 = function(rawData, unfilteredLine, byteWidth) {
-      let xComparison = this._xComparison;
-      let xBiggerThan = xComparison - 1;
-      let lastLine = this._lastLine;
-      for (let x = 0; x < byteWidth; x++) {
-        let rawByte = rawData[1 + x];
-        let f4Up = lastLine ? lastLine[x] : 0;
-        let f4Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
-        let f4UpLeft = x > xBiggerThan && lastLine ? lastLine[x - xComparison] : 0;
-        let f4Add = paethPredictor(f4Left, f4Up, f4UpLeft);
-        unfilteredLine[x] = rawByte + f4Add;
-      }
-    };
-    Filter.prototype._reverseFilterLine = function(rawData) {
-      let filter = rawData[0];
-      let unfilteredLine;
-      let currentImage = this._images[this._imageIndex];
-      let byteWidth = currentImage.byteWidth;
-      if (filter === 0) {
-        unfilteredLine = rawData.slice(1, byteWidth + 1);
-      } else {
-        unfilteredLine = Buffer.alloc(byteWidth);
-        switch (filter) {
-          case 1:
-            this._unFilterType1(rawData, unfilteredLine, byteWidth);
-            break;
-          case 2:
-            this._unFilterType2(rawData, unfilteredLine, byteWidth);
-            break;
-          case 3:
-            this._unFilterType3(rawData, unfilteredLine, byteWidth);
-            break;
-          case 4:
-            this._unFilterType4(rawData, unfilteredLine, byteWidth);
-            break;
-          default:
-            throw new Error("Unrecognised filter type - " + filter);
-        }
-      }
-      this.write(unfilteredLine);
-      currentImage.lineIndex++;
-      if (currentImage.lineIndex >= currentImage.height) {
-        this._lastLine = null;
-        this._imageIndex++;
-        currentImage = this._images[this._imageIndex];
-      } else {
-        this._lastLine = unfilteredLine;
-      }
-      if (currentImage) {
-        this.read(currentImage.byteWidth + 1, this._reverseFilterLine.bind(this));
-      } else {
-        this._lastLine = null;
-        this.complete();
-      }
-    };
-  }
-});
-
-// node_modules/pngjs/lib/filter-parse-async.js
-var require_filter_parse_async = __commonJS({
-  "node_modules/pngjs/lib/filter-parse-async.js"(exports, module) {
-    "use strict";
-    var util = __require("util");
-    var ChunkStream = require_chunkstream();
-    var Filter = require_filter_parse();
-    var FilterAsync = module.exports = function(bitmapInfo) {
-      ChunkStream.call(this);
-      let buffers = [];
-      let that = this;
-      this._filter = new Filter(bitmapInfo, {
-        read: this.read.bind(this),
-        write: function(buffer) {
-          buffers.push(buffer);
-        },
-        complete: function() {
-          that.emit("complete", Buffer.concat(buffers));
-        }
-      });
-      this._filter.start();
-    };
-    util.inherits(FilterAsync, ChunkStream);
-  }
-});
-
-// node_modules/pngjs/lib/constants.js
-var require_constants2 = __commonJS({
-  "node_modules/pngjs/lib/constants.js"(exports, module) {
-    "use strict";
-    module.exports = {
-      PNG_SIGNATURE: [137, 80, 78, 71, 13, 10, 26, 10],
-      TYPE_IHDR: 1229472850,
-      TYPE_IEND: 1229278788,
-      TYPE_IDAT: 1229209940,
-      TYPE_PLTE: 1347179589,
-      TYPE_tRNS: 1951551059,
-      // eslint-disable-line camelcase
-      TYPE_gAMA: 1732332865,
-      // eslint-disable-line camelcase
-      // color-type bits
-      COLORTYPE_GRAYSCALE: 0,
-      COLORTYPE_PALETTE: 1,
-      COLORTYPE_COLOR: 2,
-      COLORTYPE_ALPHA: 4,
-      // e.g. grayscale and alpha
-      // color-type combinations
-      COLORTYPE_PALETTE_COLOR: 3,
-      COLORTYPE_COLOR_ALPHA: 6,
-      COLORTYPE_TO_BPP_MAP: {
-        0: 1,
-        2: 3,
-        3: 1,
-        4: 2,
-        6: 4
-      },
-      GAMMA_DIVISION: 1e5
-    };
-  }
-});
-
-// node_modules/pngjs/lib/crc.js
-var require_crc = __commonJS({
-  "node_modules/pngjs/lib/crc.js"(exports, module) {
-    "use strict";
-    var crcTable = [];
-    (function() {
-      for (let i = 0; i < 256; i++) {
-        let currentCrc = i;
-        for (let j = 0; j < 8; j++) {
-          if (currentCrc & 1) {
-            currentCrc = 3988292384 ^ currentCrc >>> 1;
-          } else {
-            currentCrc = currentCrc >>> 1;
-          }
-        }
-        crcTable[i] = currentCrc;
-      }
-    })();
-    var CrcCalculator = module.exports = function() {
-      this._crc = -1;
-    };
-    CrcCalculator.prototype.write = function(data2) {
-      for (let i = 0; i < data2.length; i++) {
-        this._crc = crcTable[(this._crc ^ data2[i]) & 255] ^ this._crc >>> 8;
-      }
-      return true;
-    };
-    CrcCalculator.prototype.crc32 = function() {
-      return this._crc ^ -1;
-    };
-    CrcCalculator.crc32 = function(buf) {
-      let crc = -1;
-      for (let i = 0; i < buf.length; i++) {
-        crc = crcTable[(crc ^ buf[i]) & 255] ^ crc >>> 8;
-      }
-      return crc ^ -1;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/parser.js
-var require_parser = __commonJS({
-  "node_modules/pngjs/lib/parser.js"(exports, module) {
-    "use strict";
-    var constants = require_constants2();
-    var CrcCalculator = require_crc();
-    var Parser = module.exports = function(options, dependencies) {
-      this._options = options;
-      options.checkCRC = options.checkCRC !== false;
-      this._hasIHDR = false;
-      this._hasIEND = false;
-      this._emittedHeadersFinished = false;
-      this._palette = [];
-      this._colorType = 0;
-      this._chunks = {};
-      this._chunks[constants.TYPE_IHDR] = this._handleIHDR.bind(this);
-      this._chunks[constants.TYPE_IEND] = this._handleIEND.bind(this);
-      this._chunks[constants.TYPE_IDAT] = this._handleIDAT.bind(this);
-      this._chunks[constants.TYPE_PLTE] = this._handlePLTE.bind(this);
-      this._chunks[constants.TYPE_tRNS] = this._handleTRNS.bind(this);
-      this._chunks[constants.TYPE_gAMA] = this._handleGAMA.bind(this);
-      this.read = dependencies.read;
-      this.error = dependencies.error;
-      this.metadata = dependencies.metadata;
-      this.gamma = dependencies.gamma;
-      this.transColor = dependencies.transColor;
-      this.palette = dependencies.palette;
-      this.parsed = dependencies.parsed;
-      this.inflateData = dependencies.inflateData;
-      this.finished = dependencies.finished;
-      this.simpleTransparency = dependencies.simpleTransparency;
-      this.headersFinished = dependencies.headersFinished || function() {
-      };
-    };
-    Parser.prototype.start = function() {
-      this.read(constants.PNG_SIGNATURE.length, this._parseSignature.bind(this));
-    };
-    Parser.prototype._parseSignature = function(data2) {
-      let signature = constants.PNG_SIGNATURE;
-      for (let i = 0; i < signature.length; i++) {
-        if (data2[i] !== signature[i]) {
-          this.error(new Error("Invalid file signature"));
-          return;
-        }
-      }
-      this.read(8, this._parseChunkBegin.bind(this));
-    };
-    Parser.prototype._parseChunkBegin = function(data2) {
-      let length = data2.readUInt32BE(0);
-      let type = data2.readUInt32BE(4);
-      let name2 = "";
-      for (let i = 4; i < 8; i++) {
-        name2 += String.fromCharCode(data2[i]);
-      }
-      let ancillary = Boolean(data2[4] & 32);
-      if (!this._hasIHDR && type !== constants.TYPE_IHDR) {
-        this.error(new Error("Expected IHDR on beggining"));
-        return;
-      }
-      this._crc = new CrcCalculator();
-      this._crc.write(Buffer.from(name2));
-      if (this._chunks[type]) {
-        return this._chunks[type](length);
-      }
-      if (!ancillary) {
-        this.error(new Error("Unsupported critical chunk type " + name2));
-        return;
-      }
-      this.read(length + 4, this._skipChunk.bind(this));
-    };
-    Parser.prototype._skipChunk = function() {
-      this.read(8, this._parseChunkBegin.bind(this));
-    };
-    Parser.prototype._handleChunkEnd = function() {
-      this.read(4, this._parseChunkEnd.bind(this));
-    };
-    Parser.prototype._parseChunkEnd = function(data2) {
-      let fileCrc = data2.readInt32BE(0);
-      let calcCrc = this._crc.crc32();
-      if (this._options.checkCRC && calcCrc !== fileCrc) {
-        this.error(new Error("Crc error - " + fileCrc + " - " + calcCrc));
-        return;
-      }
-      if (!this._hasIEND) {
-        this.read(8, this._parseChunkBegin.bind(this));
-      }
-    };
-    Parser.prototype._handleIHDR = function(length) {
-      this.read(length, this._parseIHDR.bind(this));
-    };
-    Parser.prototype._parseIHDR = function(data2) {
-      this._crc.write(data2);
-      let width = data2.readUInt32BE(0);
-      let height = data2.readUInt32BE(4);
-      let depth = data2[8];
-      let colorType = data2[9];
-      let compr = data2[10];
-      let filter = data2[11];
-      let interlace = data2[12];
-      if (depth !== 8 && depth !== 4 && depth !== 2 && depth !== 1 && depth !== 16) {
-        this.error(new Error("Unsupported bit depth " + depth));
-        return;
-      }
-      if (!(colorType in constants.COLORTYPE_TO_BPP_MAP)) {
-        this.error(new Error("Unsupported color type"));
-        return;
-      }
-      if (compr !== 0) {
-        this.error(new Error("Unsupported compression method"));
-        return;
-      }
-      if (filter !== 0) {
-        this.error(new Error("Unsupported filter method"));
-        return;
-      }
-      if (interlace !== 0 && interlace !== 1) {
-        this.error(new Error("Unsupported interlace method"));
-        return;
-      }
-      this._colorType = colorType;
-      let bpp = constants.COLORTYPE_TO_BPP_MAP[this._colorType];
-      this._hasIHDR = true;
-      this.metadata({
-        width,
-        height,
-        depth,
-        interlace: Boolean(interlace),
-        palette: Boolean(colorType & constants.COLORTYPE_PALETTE),
-        color: Boolean(colorType & constants.COLORTYPE_COLOR),
-        alpha: Boolean(colorType & constants.COLORTYPE_ALPHA),
-        bpp,
-        colorType
-      });
-      this._handleChunkEnd();
-    };
-    Parser.prototype._handlePLTE = function(length) {
-      this.read(length, this._parsePLTE.bind(this));
-    };
-    Parser.prototype._parsePLTE = function(data2) {
-      this._crc.write(data2);
-      let entries = Math.floor(data2.length / 3);
-      for (let i = 0; i < entries; i++) {
-        this._palette.push([data2[i * 3], data2[i * 3 + 1], data2[i * 3 + 2], 255]);
-      }
-      this.palette(this._palette);
-      this._handleChunkEnd();
-    };
-    Parser.prototype._handleTRNS = function(length) {
-      this.simpleTransparency();
-      this.read(length, this._parseTRNS.bind(this));
-    };
-    Parser.prototype._parseTRNS = function(data2) {
-      this._crc.write(data2);
-      if (this._colorType === constants.COLORTYPE_PALETTE_COLOR) {
-        if (this._palette.length === 0) {
-          this.error(new Error("Transparency chunk must be after palette"));
-          return;
-        }
-        if (data2.length > this._palette.length) {
-          this.error(new Error("More transparent colors than palette size"));
-          return;
-        }
-        for (let i = 0; i < data2.length; i++) {
-          this._palette[i][3] = data2[i];
-        }
-        this.palette(this._palette);
-      }
-      if (this._colorType === constants.COLORTYPE_GRAYSCALE) {
-        this.transColor([data2.readUInt16BE(0)]);
-      }
-      if (this._colorType === constants.COLORTYPE_COLOR) {
-        this.transColor([
-          data2.readUInt16BE(0),
-          data2.readUInt16BE(2),
-          data2.readUInt16BE(4)
-        ]);
-      }
-      this._handleChunkEnd();
-    };
-    Parser.prototype._handleGAMA = function(length) {
-      this.read(length, this._parseGAMA.bind(this));
-    };
-    Parser.prototype._parseGAMA = function(data2) {
-      this._crc.write(data2);
-      this.gamma(data2.readUInt32BE(0) / constants.GAMMA_DIVISION);
-      this._handleChunkEnd();
-    };
-    Parser.prototype._handleIDAT = function(length) {
-      if (!this._emittedHeadersFinished) {
-        this._emittedHeadersFinished = true;
-        this.headersFinished();
-      }
-      this.read(-length, this._parseIDAT.bind(this, length));
-    };
-    Parser.prototype._parseIDAT = function(length, data2) {
-      this._crc.write(data2);
-      if (this._colorType === constants.COLORTYPE_PALETTE_COLOR && this._palette.length === 0) {
-        throw new Error("Expected palette not found");
-      }
-      this.inflateData(data2);
-      let leftOverLength = length - data2.length;
-      if (leftOverLength > 0) {
-        this._handleIDAT(leftOverLength);
-      } else {
-        this._handleChunkEnd();
-      }
-    };
-    Parser.prototype._handleIEND = function(length) {
-      this.read(length, this._parseIEND.bind(this));
-    };
-    Parser.prototype._parseIEND = function(data2) {
-      this._crc.write(data2);
-      this._hasIEND = true;
-      this._handleChunkEnd();
-      if (this.finished) {
-        this.finished();
-      }
-    };
-  }
-});
-
-// node_modules/pngjs/lib/bitmapper.js
-var require_bitmapper = __commonJS({
-  "node_modules/pngjs/lib/bitmapper.js"(exports) {
-    "use strict";
-    var interlaceUtils = require_interlace();
-    var pixelBppMapper = [
-      // 0 - dummy entry
-      function() {
-      },
-      // 1 - L
-      // 0: 0, 1: 0, 2: 0, 3: 0xff
-      function(pxData, data2, pxPos, rawPos) {
-        if (rawPos === data2.length) {
-          throw new Error("Ran out of data");
-        }
-        let pixel = data2[rawPos];
-        pxData[pxPos] = pixel;
-        pxData[pxPos + 1] = pixel;
-        pxData[pxPos + 2] = pixel;
-        pxData[pxPos + 3] = 255;
-      },
-      // 2 - LA
-      // 0: 0, 1: 0, 2: 0, 3: 1
-      function(pxData, data2, pxPos, rawPos) {
-        if (rawPos + 1 >= data2.length) {
-          throw new Error("Ran out of data");
-        }
-        let pixel = data2[rawPos];
-        pxData[pxPos] = pixel;
-        pxData[pxPos + 1] = pixel;
-        pxData[pxPos + 2] = pixel;
-        pxData[pxPos + 3] = data2[rawPos + 1];
-      },
-      // 3 - RGB
-      // 0: 0, 1: 1, 2: 2, 3: 0xff
-      function(pxData, data2, pxPos, rawPos) {
-        if (rawPos + 2 >= data2.length) {
-          throw new Error("Ran out of data");
-        }
-        pxData[pxPos] = data2[rawPos];
-        pxData[pxPos + 1] = data2[rawPos + 1];
-        pxData[pxPos + 2] = data2[rawPos + 2];
-        pxData[pxPos + 3] = 255;
-      },
-      // 4 - RGBA
-      // 0: 0, 1: 1, 2: 2, 3: 3
-      function(pxData, data2, pxPos, rawPos) {
-        if (rawPos + 3 >= data2.length) {
-          throw new Error("Ran out of data");
-        }
-        pxData[pxPos] = data2[rawPos];
-        pxData[pxPos + 1] = data2[rawPos + 1];
-        pxData[pxPos + 2] = data2[rawPos + 2];
-        pxData[pxPos + 3] = data2[rawPos + 3];
-      }
-    ];
-    var pixelBppCustomMapper = [
-      // 0 - dummy entry
-      function() {
-      },
-      // 1 - L
-      // 0: 0, 1: 0, 2: 0, 3: 0xff
-      function(pxData, pixelData, pxPos, maxBit) {
-        let pixel = pixelData[0];
-        pxData[pxPos] = pixel;
-        pxData[pxPos + 1] = pixel;
-        pxData[pxPos + 2] = pixel;
-        pxData[pxPos + 3] = maxBit;
-      },
-      // 2 - LA
-      // 0: 0, 1: 0, 2: 0, 3: 1
-      function(pxData, pixelData, pxPos) {
-        let pixel = pixelData[0];
-        pxData[pxPos] = pixel;
-        pxData[pxPos + 1] = pixel;
-        pxData[pxPos + 2] = pixel;
-        pxData[pxPos + 3] = pixelData[1];
-      },
-      // 3 - RGB
-      // 0: 0, 1: 1, 2: 2, 3: 0xff
-      function(pxData, pixelData, pxPos, maxBit) {
-        pxData[pxPos] = pixelData[0];
-        pxData[pxPos + 1] = pixelData[1];
-        pxData[pxPos + 2] = pixelData[2];
-        pxData[pxPos + 3] = maxBit;
-      },
-      // 4 - RGBA
-      // 0: 0, 1: 1, 2: 2, 3: 3
-      function(pxData, pixelData, pxPos) {
-        pxData[pxPos] = pixelData[0];
-        pxData[pxPos + 1] = pixelData[1];
-        pxData[pxPos + 2] = pixelData[2];
-        pxData[pxPos + 3] = pixelData[3];
-      }
-    ];
-    function bitRetriever(data2, depth) {
-      let leftOver = [];
-      let i = 0;
-      function split3() {
-        if (i === data2.length) {
-          throw new Error("Ran out of data");
-        }
-        let byte = data2[i];
-        i++;
-        let byte8, byte7, byte6, byte5, byte4, byte3, byte2, byte1;
-        switch (depth) {
-          default:
-            throw new Error("unrecognised depth");
-          case 16:
-            byte2 = data2[i];
-            i++;
-            leftOver.push((byte << 8) + byte2);
-            break;
-          case 4:
-            byte2 = byte & 15;
-            byte1 = byte >> 4;
-            leftOver.push(byte1, byte2);
-            break;
-          case 2:
-            byte4 = byte & 3;
-            byte3 = byte >> 2 & 3;
-            byte2 = byte >> 4 & 3;
-            byte1 = byte >> 6 & 3;
-            leftOver.push(byte1, byte2, byte3, byte4);
-            break;
-          case 1:
-            byte8 = byte & 1;
-            byte7 = byte >> 1 & 1;
-            byte6 = byte >> 2 & 1;
-            byte5 = byte >> 3 & 1;
-            byte4 = byte >> 4 & 1;
-            byte3 = byte >> 5 & 1;
-            byte2 = byte >> 6 & 1;
-            byte1 = byte >> 7 & 1;
-            leftOver.push(byte1, byte2, byte3, byte4, byte5, byte6, byte7, byte8);
-            break;
-        }
-      }
-      return {
-        get: function(count) {
-          while (leftOver.length < count) {
-            split3();
-          }
-          let returner = leftOver.slice(0, count);
-          leftOver = leftOver.slice(count);
-          return returner;
-        },
-        resetAfterLine: function() {
-          leftOver.length = 0;
-        },
-        end: function() {
-          if (i !== data2.length) {
-            throw new Error("extra data found");
-          }
-        }
-      };
-    }
-    function mapImage8Bit(image, pxData, getPxPos, bpp, data2, rawPos) {
-      let imageWidth = image.width;
-      let imageHeight = image.height;
-      let imagePass = image.index;
-      for (let y = 0; y < imageHeight; y++) {
-        for (let x = 0; x < imageWidth; x++) {
-          let pxPos = getPxPos(x, y, imagePass);
-          pixelBppMapper[bpp](pxData, data2, pxPos, rawPos);
-          rawPos += bpp;
-        }
-      }
-      return rawPos;
-    }
-    function mapImageCustomBit(image, pxData, getPxPos, bpp, bits, maxBit) {
-      let imageWidth = image.width;
-      let imageHeight = image.height;
-      let imagePass = image.index;
-      for (let y = 0; y < imageHeight; y++) {
-        for (let x = 0; x < imageWidth; x++) {
-          let pixelData = bits.get(bpp);
-          let pxPos = getPxPos(x, y, imagePass);
-          pixelBppCustomMapper[bpp](pxData, pixelData, pxPos, maxBit);
-        }
-        bits.resetAfterLine();
-      }
-    }
-    exports.dataToBitMap = function(data2, bitmapInfo) {
-      let width = bitmapInfo.width;
-      let height = bitmapInfo.height;
-      let depth = bitmapInfo.depth;
-      let bpp = bitmapInfo.bpp;
-      let interlace = bitmapInfo.interlace;
-      let bits;
-      if (depth !== 8) {
-        bits = bitRetriever(data2, depth);
-      }
-      let pxData;
-      if (depth <= 8) {
-        pxData = Buffer.alloc(width * height * 4);
-      } else {
-        pxData = new Uint16Array(width * height * 4);
-      }
-      let maxBit = Math.pow(2, depth) - 1;
-      let rawPos = 0;
-      let images;
-      let getPxPos;
-      if (interlace) {
-        images = interlaceUtils.getImagePasses(width, height);
-        getPxPos = interlaceUtils.getInterlaceIterator(width, height);
-      } else {
-        let nonInterlacedPxPos = 0;
-        getPxPos = function() {
-          let returner = nonInterlacedPxPos;
-          nonInterlacedPxPos += 4;
-          return returner;
-        };
-        images = [{ width, height }];
-      }
-      for (let imageIndex = 0; imageIndex < images.length; imageIndex++) {
-        if (depth === 8) {
-          rawPos = mapImage8Bit(
-            images[imageIndex],
-            pxData,
-            getPxPos,
-            bpp,
-            data2,
-            rawPos
-          );
-        } else {
-          mapImageCustomBit(
-            images[imageIndex],
-            pxData,
-            getPxPos,
-            bpp,
-            bits,
-            maxBit
-          );
-        }
-      }
-      if (depth === 8) {
-        if (rawPos !== data2.length) {
-          throw new Error("extra data found");
-        }
-      } else {
-        bits.end();
-      }
-      return pxData;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/format-normaliser.js
-var require_format_normaliser = __commonJS({
-  "node_modules/pngjs/lib/format-normaliser.js"(exports, module) {
-    "use strict";
-    function dePalette(indata, outdata, width, height, palette) {
-      let pxPos = 0;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          let color = palette[indata[pxPos]];
-          if (!color) {
-            throw new Error("index " + indata[pxPos] + " not in palette");
-          }
-          for (let i = 0; i < 4; i++) {
-            outdata[pxPos + i] = color[i];
-          }
-          pxPos += 4;
-        }
-      }
-    }
-    function replaceTransparentColor(indata, outdata, width, height, transColor) {
-      let pxPos = 0;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          let makeTrans = false;
-          if (transColor.length === 1) {
-            if (transColor[0] === indata[pxPos]) {
-              makeTrans = true;
-            }
-          } else if (transColor[0] === indata[pxPos] && transColor[1] === indata[pxPos + 1] && transColor[2] === indata[pxPos + 2]) {
-            makeTrans = true;
-          }
-          if (makeTrans) {
-            for (let i = 0; i < 4; i++) {
-              outdata[pxPos + i] = 0;
-            }
-          }
-          pxPos += 4;
-        }
-      }
-    }
-    function scaleDepth(indata, outdata, width, height, depth) {
-      let maxOutSample = 255;
-      let maxInSample = Math.pow(2, depth) - 1;
-      let pxPos = 0;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          for (let i = 0; i < 4; i++) {
-            outdata[pxPos + i] = Math.floor(
-              indata[pxPos + i] * maxOutSample / maxInSample + 0.5
-            );
-          }
-          pxPos += 4;
-        }
-      }
-    }
-    module.exports = function(indata, imageData) {
-      let depth = imageData.depth;
-      let width = imageData.width;
-      let height = imageData.height;
-      let colorType = imageData.colorType;
-      let transColor = imageData.transColor;
-      let palette = imageData.palette;
-      let outdata = indata;
-      if (colorType === 3) {
-        dePalette(indata, outdata, width, height, palette);
-      } else {
-        if (transColor) {
-          replaceTransparentColor(indata, outdata, width, height, transColor);
-        }
-        if (depth !== 8) {
-          if (depth === 16) {
-            outdata = Buffer.alloc(width * height * 4);
-          }
-          scaleDepth(indata, outdata, width, height, depth);
-        }
-      }
-      return outdata;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/parser-async.js
-var require_parser_async = __commonJS({
-  "node_modules/pngjs/lib/parser-async.js"(exports, module) {
-    "use strict";
-    var util = __require("util");
-    var zlib = __require("zlib");
-    var ChunkStream = require_chunkstream();
-    var FilterAsync = require_filter_parse_async();
-    var Parser = require_parser();
-    var bitmapper = require_bitmapper();
-    var formatNormaliser = require_format_normaliser();
-    var ParserAsync = module.exports = function(options) {
-      ChunkStream.call(this);
-      this._parser = new Parser(options, {
-        read: this.read.bind(this),
-        error: this._handleError.bind(this),
-        metadata: this._handleMetaData.bind(this),
-        gamma: this.emit.bind(this, "gamma"),
-        palette: this._handlePalette.bind(this),
-        transColor: this._handleTransColor.bind(this),
-        finished: this._finished.bind(this),
-        inflateData: this._inflateData.bind(this),
-        simpleTransparency: this._simpleTransparency.bind(this),
-        headersFinished: this._headersFinished.bind(this)
-      });
-      this._options = options;
-      this.writable = true;
-      this._parser.start();
-    };
-    util.inherits(ParserAsync, ChunkStream);
-    ParserAsync.prototype._handleError = function(err) {
-      this.emit("error", err);
-      this.writable = false;
-      this.destroy();
-      if (this._inflate && this._inflate.destroy) {
-        this._inflate.destroy();
-      }
-      if (this._filter) {
-        this._filter.destroy();
-        this._filter.on("error", function() {
-        });
-      }
-      this.errord = true;
-    };
-    ParserAsync.prototype._inflateData = function(data2) {
-      if (!this._inflate) {
-        if (this._bitmapInfo.interlace) {
-          this._inflate = zlib.createInflate();
-          this._inflate.on("error", this.emit.bind(this, "error"));
-          this._filter.on("complete", this._complete.bind(this));
-          this._inflate.pipe(this._filter);
-        } else {
-          let rowSize = (this._bitmapInfo.width * this._bitmapInfo.bpp * this._bitmapInfo.depth + 7 >> 3) + 1;
-          let imageSize = rowSize * this._bitmapInfo.height;
-          let chunkSize = Math.max(imageSize, zlib.Z_MIN_CHUNK);
-          this._inflate = zlib.createInflate({ chunkSize });
-          let leftToInflate = imageSize;
-          let emitError = this.emit.bind(this, "error");
-          this._inflate.on("error", function(err) {
-            if (!leftToInflate) {
-              return;
-            }
-            emitError(err);
-          });
-          this._filter.on("complete", this._complete.bind(this));
-          let filterWrite = this._filter.write.bind(this._filter);
-          this._inflate.on("data", function(chunk) {
-            if (!leftToInflate) {
-              return;
-            }
-            if (chunk.length > leftToInflate) {
-              chunk = chunk.slice(0, leftToInflate);
-            }
-            leftToInflate -= chunk.length;
-            filterWrite(chunk);
-          });
-          this._inflate.on("end", this._filter.end.bind(this._filter));
-        }
-      }
-      this._inflate.write(data2);
-    };
-    ParserAsync.prototype._handleMetaData = function(metaData) {
-      this._metaData = metaData;
-      this._bitmapInfo = Object.create(metaData);
-      this._filter = new FilterAsync(this._bitmapInfo);
-    };
-    ParserAsync.prototype._handleTransColor = function(transColor) {
-      this._bitmapInfo.transColor = transColor;
-    };
-    ParserAsync.prototype._handlePalette = function(palette) {
-      this._bitmapInfo.palette = palette;
-    };
-    ParserAsync.prototype._simpleTransparency = function() {
-      this._metaData.alpha = true;
-    };
-    ParserAsync.prototype._headersFinished = function() {
-      this.emit("metadata", this._metaData);
-    };
-    ParserAsync.prototype._finished = function() {
-      if (this.errord) {
-        return;
-      }
-      if (!this._inflate) {
-        this.emit("error", "No Inflate block");
-      } else {
-        this._inflate.end();
-      }
-    };
-    ParserAsync.prototype._complete = function(filteredData) {
-      if (this.errord) {
-        return;
-      }
-      let normalisedBitmapData;
-      try {
-        let bitmapData = bitmapper.dataToBitMap(filteredData, this._bitmapInfo);
-        normalisedBitmapData = formatNormaliser(bitmapData, this._bitmapInfo);
-        bitmapData = null;
-      } catch (ex) {
-        this._handleError(ex);
-        return;
-      }
-      this.emit("parsed", normalisedBitmapData);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/bitpacker.js
-var require_bitpacker = __commonJS({
-  "node_modules/pngjs/lib/bitpacker.js"(exports, module) {
-    "use strict";
-    var constants = require_constants2();
-    module.exports = function(dataIn, width, height, options) {
-      let outHasAlpha = [constants.COLORTYPE_COLOR_ALPHA, constants.COLORTYPE_ALPHA].indexOf(
-        options.colorType
-      ) !== -1;
-      if (options.colorType === options.inputColorType) {
-        let bigEndian = (function() {
-          let buffer = new ArrayBuffer(2);
-          new DataView(buffer).setInt16(
-            0,
-            256,
-            true
-            /* littleEndian */
-          );
-          return new Int16Array(buffer)[0] !== 256;
-        })();
-        if (options.bitDepth === 8 || options.bitDepth === 16 && bigEndian) {
-          return dataIn;
-        }
-      }
-      let data2 = options.bitDepth !== 16 ? dataIn : new Uint16Array(dataIn.buffer);
-      let maxValue = 255;
-      let inBpp = constants.COLORTYPE_TO_BPP_MAP[options.inputColorType];
-      if (inBpp === 4 && !options.inputHasAlpha) {
-        inBpp = 3;
-      }
-      let outBpp = constants.COLORTYPE_TO_BPP_MAP[options.colorType];
-      if (options.bitDepth === 16) {
-        maxValue = 65535;
-        outBpp *= 2;
-      }
-      let outData = Buffer.alloc(width * height * outBpp);
-      let inIndex = 0;
-      let outIndex = 0;
-      let bgColor = options.bgColor || {};
-      if (bgColor.red === void 0) {
-        bgColor.red = maxValue;
-      }
-      if (bgColor.green === void 0) {
-        bgColor.green = maxValue;
-      }
-      if (bgColor.blue === void 0) {
-        bgColor.blue = maxValue;
-      }
-      function getRGBA() {
-        let red;
-        let green;
-        let blue;
-        let alpha = maxValue;
-        switch (options.inputColorType) {
-          case constants.COLORTYPE_COLOR_ALPHA:
-            alpha = data2[inIndex + 3];
-            red = data2[inIndex];
-            green = data2[inIndex + 1];
-            blue = data2[inIndex + 2];
-            break;
-          case constants.COLORTYPE_COLOR:
-            red = data2[inIndex];
-            green = data2[inIndex + 1];
-            blue = data2[inIndex + 2];
-            break;
-          case constants.COLORTYPE_ALPHA:
-            alpha = data2[inIndex + 1];
-            red = data2[inIndex];
-            green = red;
-            blue = red;
-            break;
-          case constants.COLORTYPE_GRAYSCALE:
-            red = data2[inIndex];
-            green = red;
-            blue = red;
-            break;
-          default:
-            throw new Error(
-              "input color type:" + options.inputColorType + " is not supported at present"
-            );
-        }
-        if (options.inputHasAlpha) {
-          if (!outHasAlpha) {
-            alpha /= maxValue;
-            red = Math.min(
-              Math.max(Math.round((1 - alpha) * bgColor.red + alpha * red), 0),
-              maxValue
-            );
-            green = Math.min(
-              Math.max(Math.round((1 - alpha) * bgColor.green + alpha * green), 0),
-              maxValue
-            );
-            blue = Math.min(
-              Math.max(Math.round((1 - alpha) * bgColor.blue + alpha * blue), 0),
-              maxValue
-            );
-          }
-        }
-        return { red, green, blue, alpha };
-      }
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          let rgba = getRGBA(data2, inIndex);
-          switch (options.colorType) {
-            case constants.COLORTYPE_COLOR_ALPHA:
-            case constants.COLORTYPE_COLOR:
-              if (options.bitDepth === 8) {
-                outData[outIndex] = rgba.red;
-                outData[outIndex + 1] = rgba.green;
-                outData[outIndex + 2] = rgba.blue;
-                if (outHasAlpha) {
-                  outData[outIndex + 3] = rgba.alpha;
-                }
-              } else {
-                outData.writeUInt16BE(rgba.red, outIndex);
-                outData.writeUInt16BE(rgba.green, outIndex + 2);
-                outData.writeUInt16BE(rgba.blue, outIndex + 4);
-                if (outHasAlpha) {
-                  outData.writeUInt16BE(rgba.alpha, outIndex + 6);
-                }
-              }
-              break;
-            case constants.COLORTYPE_ALPHA:
-            case constants.COLORTYPE_GRAYSCALE: {
-              let grayscale = (rgba.red + rgba.green + rgba.blue) / 3;
-              if (options.bitDepth === 8) {
-                outData[outIndex] = grayscale;
-                if (outHasAlpha) {
-                  outData[outIndex + 1] = rgba.alpha;
-                }
-              } else {
-                outData.writeUInt16BE(grayscale, outIndex);
-                if (outHasAlpha) {
-                  outData.writeUInt16BE(rgba.alpha, outIndex + 2);
-                }
-              }
-              break;
-            }
-            default:
-              throw new Error("unrecognised color Type " + options.colorType);
-          }
-          inIndex += inBpp;
-          outIndex += outBpp;
-        }
-      }
-      return outData;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/filter-pack.js
-var require_filter_pack = __commonJS({
-  "node_modules/pngjs/lib/filter-pack.js"(exports, module) {
-    "use strict";
-    var paethPredictor = require_paeth_predictor();
-    function filterNone(pxData, pxPos, byteWidth, rawData, rawPos) {
-      for (let x = 0; x < byteWidth; x++) {
-        rawData[rawPos + x] = pxData[pxPos + x];
-      }
-    }
-    function filterSumNone(pxData, pxPos, byteWidth) {
-      let sum = 0;
-      let length = pxPos + byteWidth;
-      for (let i = pxPos; i < length; i++) {
-        sum += Math.abs(pxData[i]);
-      }
-      return sum;
-    }
-    function filterSub(pxData, pxPos, byteWidth, rawData, rawPos, bpp) {
-      for (let x = 0; x < byteWidth; x++) {
-        let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-        let val = pxData[pxPos + x] - left;
-        rawData[rawPos + x] = val;
-      }
-    }
-    function filterSumSub(pxData, pxPos, byteWidth, bpp) {
-      let sum = 0;
-      for (let x = 0; x < byteWidth; x++) {
-        let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-        let val = pxData[pxPos + x] - left;
-        sum += Math.abs(val);
-      }
-      return sum;
-    }
-    function filterUp(pxData, pxPos, byteWidth, rawData, rawPos) {
-      for (let x = 0; x < byteWidth; x++) {
-        let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-        let val = pxData[pxPos + x] - up;
-        rawData[rawPos + x] = val;
-      }
-    }
-    function filterSumUp(pxData, pxPos, byteWidth) {
-      let sum = 0;
-      let length = pxPos + byteWidth;
-      for (let x = pxPos; x < length; x++) {
-        let up = pxPos > 0 ? pxData[x - byteWidth] : 0;
-        let val = pxData[x] - up;
-        sum += Math.abs(val);
-      }
-      return sum;
-    }
-    function filterAvg(pxData, pxPos, byteWidth, rawData, rawPos, bpp) {
-      for (let x = 0; x < byteWidth; x++) {
-        let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-        let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-        let val = pxData[pxPos + x] - (left + up >> 1);
-        rawData[rawPos + x] = val;
-      }
-    }
-    function filterSumAvg(pxData, pxPos, byteWidth, bpp) {
-      let sum = 0;
-      for (let x = 0; x < byteWidth; x++) {
-        let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-        let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-        let val = pxData[pxPos + x] - (left + up >> 1);
-        sum += Math.abs(val);
-      }
-      return sum;
-    }
-    function filterPaeth(pxData, pxPos, byteWidth, rawData, rawPos, bpp) {
-      for (let x = 0; x < byteWidth; x++) {
-        let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-        let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-        let upleft = pxPos > 0 && x >= bpp ? pxData[pxPos + x - (byteWidth + bpp)] : 0;
-        let val = pxData[pxPos + x] - paethPredictor(left, up, upleft);
-        rawData[rawPos + x] = val;
-      }
-    }
-    function filterSumPaeth(pxData, pxPos, byteWidth, bpp) {
-      let sum = 0;
-      for (let x = 0; x < byteWidth; x++) {
-        let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-        let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-        let upleft = pxPos > 0 && x >= bpp ? pxData[pxPos + x - (byteWidth + bpp)] : 0;
-        let val = pxData[pxPos + x] - paethPredictor(left, up, upleft);
-        sum += Math.abs(val);
-      }
-      return sum;
-    }
-    var filters = {
-      0: filterNone,
-      1: filterSub,
-      2: filterUp,
-      3: filterAvg,
-      4: filterPaeth
-    };
-    var filterSums = {
-      0: filterSumNone,
-      1: filterSumSub,
-      2: filterSumUp,
-      3: filterSumAvg,
-      4: filterSumPaeth
-    };
-    module.exports = function(pxData, width, height, options, bpp) {
-      let filterTypes;
-      if (!("filterType" in options) || options.filterType === -1) {
-        filterTypes = [0, 1, 2, 3, 4];
-      } else if (typeof options.filterType === "number") {
-        filterTypes = [options.filterType];
-      } else {
-        throw new Error("unrecognised filter types");
-      }
-      if (options.bitDepth === 16) {
-        bpp *= 2;
-      }
-      let byteWidth = width * bpp;
-      let rawPos = 0;
-      let pxPos = 0;
-      let rawData = Buffer.alloc((byteWidth + 1) * height);
-      let sel = filterTypes[0];
-      for (let y = 0; y < height; y++) {
-        if (filterTypes.length > 1) {
-          let min = Infinity;
-          for (let i = 0; i < filterTypes.length; i++) {
-            let sum = filterSums[filterTypes[i]](pxData, pxPos, byteWidth, bpp);
-            if (sum < min) {
-              sel = filterTypes[i];
-              min = sum;
-            }
-          }
-        }
-        rawData[rawPos] = sel;
-        rawPos++;
-        filters[sel](pxData, pxPos, byteWidth, rawData, rawPos, bpp);
-        rawPos += byteWidth;
-        pxPos += byteWidth;
-      }
-      return rawData;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/packer.js
-var require_packer = __commonJS({
-  "node_modules/pngjs/lib/packer.js"(exports, module) {
-    "use strict";
-    var constants = require_constants2();
-    var CrcStream = require_crc();
-    var bitPacker = require_bitpacker();
-    var filter = require_filter_pack();
-    var zlib = __require("zlib");
-    var Packer = module.exports = function(options) {
-      this._options = options;
-      options.deflateChunkSize = options.deflateChunkSize || 32 * 1024;
-      options.deflateLevel = options.deflateLevel != null ? options.deflateLevel : 9;
-      options.deflateStrategy = options.deflateStrategy != null ? options.deflateStrategy : 3;
-      options.inputHasAlpha = options.inputHasAlpha != null ? options.inputHasAlpha : true;
-      options.deflateFactory = options.deflateFactory || zlib.createDeflate;
-      options.bitDepth = options.bitDepth || 8;
-      options.colorType = typeof options.colorType === "number" ? options.colorType : constants.COLORTYPE_COLOR_ALPHA;
-      options.inputColorType = typeof options.inputColorType === "number" ? options.inputColorType : constants.COLORTYPE_COLOR_ALPHA;
-      if ([
-        constants.COLORTYPE_GRAYSCALE,
-        constants.COLORTYPE_COLOR,
-        constants.COLORTYPE_COLOR_ALPHA,
-        constants.COLORTYPE_ALPHA
-      ].indexOf(options.colorType) === -1) {
-        throw new Error(
-          "option color type:" + options.colorType + " is not supported at present"
-        );
-      }
-      if ([
-        constants.COLORTYPE_GRAYSCALE,
-        constants.COLORTYPE_COLOR,
-        constants.COLORTYPE_COLOR_ALPHA,
-        constants.COLORTYPE_ALPHA
-      ].indexOf(options.inputColorType) === -1) {
-        throw new Error(
-          "option input color type:" + options.inputColorType + " is not supported at present"
-        );
-      }
-      if (options.bitDepth !== 8 && options.bitDepth !== 16) {
-        throw new Error(
-          "option bit depth:" + options.bitDepth + " is not supported at present"
-        );
-      }
-    };
-    Packer.prototype.getDeflateOptions = function() {
-      return {
-        chunkSize: this._options.deflateChunkSize,
-        level: this._options.deflateLevel,
-        strategy: this._options.deflateStrategy
-      };
-    };
-    Packer.prototype.createDeflate = function() {
-      return this._options.deflateFactory(this.getDeflateOptions());
-    };
-    Packer.prototype.filterData = function(data2, width, height) {
-      let packedData = bitPacker(data2, width, height, this._options);
-      let bpp = constants.COLORTYPE_TO_BPP_MAP[this._options.colorType];
-      let filteredData = filter(packedData, width, height, this._options, bpp);
-      return filteredData;
-    };
-    Packer.prototype._packChunk = function(type, data2) {
-      let len = data2 ? data2.length : 0;
-      let buf = Buffer.alloc(len + 12);
-      buf.writeUInt32BE(len, 0);
-      buf.writeUInt32BE(type, 4);
-      if (data2) {
-        data2.copy(buf, 8);
-      }
-      buf.writeInt32BE(
-        CrcStream.crc32(buf.slice(4, buf.length - 4)),
-        buf.length - 4
-      );
-      return buf;
-    };
-    Packer.prototype.packGAMA = function(gamma) {
-      let buf = Buffer.alloc(4);
-      buf.writeUInt32BE(Math.floor(gamma * constants.GAMMA_DIVISION), 0);
-      return this._packChunk(constants.TYPE_gAMA, buf);
-    };
-    Packer.prototype.packIHDR = function(width, height) {
-      let buf = Buffer.alloc(13);
-      buf.writeUInt32BE(width, 0);
-      buf.writeUInt32BE(height, 4);
-      buf[8] = this._options.bitDepth;
-      buf[9] = this._options.colorType;
-      buf[10] = 0;
-      buf[11] = 0;
-      buf[12] = 0;
-      return this._packChunk(constants.TYPE_IHDR, buf);
-    };
-    Packer.prototype.packIDAT = function(data2) {
-      return this._packChunk(constants.TYPE_IDAT, data2);
-    };
-    Packer.prototype.packIEND = function() {
-      return this._packChunk(constants.TYPE_IEND, null);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/packer-async.js
-var require_packer_async = __commonJS({
-  "node_modules/pngjs/lib/packer-async.js"(exports, module) {
-    "use strict";
-    var util = __require("util");
-    var Stream = __require("stream");
-    var constants = require_constants2();
-    var Packer = require_packer();
-    var PackerAsync = module.exports = function(opt) {
-      Stream.call(this);
-      let options = opt || {};
-      this._packer = new Packer(options);
-      this._deflate = this._packer.createDeflate();
-      this.readable = true;
-    };
-    util.inherits(PackerAsync, Stream);
-    PackerAsync.prototype.pack = function(data2, width, height, gamma) {
-      this.emit("data", Buffer.from(constants.PNG_SIGNATURE));
-      this.emit("data", this._packer.packIHDR(width, height));
-      if (gamma) {
-        this.emit("data", this._packer.packGAMA(gamma));
-      }
-      let filteredData = this._packer.filterData(data2, width, height);
-      this._deflate.on("error", this.emit.bind(this, "error"));
-      this._deflate.on(
-        "data",
-        function(compressedData) {
-          this.emit("data", this._packer.packIDAT(compressedData));
-        }.bind(this)
-      );
-      this._deflate.on(
-        "end",
-        function() {
-          this.emit("data", this._packer.packIEND());
-          this.emit("end");
-        }.bind(this)
-      );
-      this._deflate.end(filteredData);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/sync-inflate.js
-var require_sync_inflate = __commonJS({
-  "node_modules/pngjs/lib/sync-inflate.js"(exports, module) {
-    "use strict";
-    var assert2 = __require("assert").ok;
-    var zlib = __require("zlib");
-    var util = __require("util");
-    var kMaxLength = __require("buffer").kMaxLength;
-    function Inflate(opts) {
-      if (!(this instanceof Inflate)) {
-        return new Inflate(opts);
-      }
-      if (opts && opts.chunkSize < zlib.Z_MIN_CHUNK) {
-        opts.chunkSize = zlib.Z_MIN_CHUNK;
-      }
-      zlib.Inflate.call(this, opts);
-      this._offset = this._offset === void 0 ? this._outOffset : this._offset;
-      this._buffer = this._buffer || this._outBuffer;
-      if (opts && opts.maxLength != null) {
-        this._maxLength = opts.maxLength;
-      }
-    }
-    function createInflate(opts) {
-      return new Inflate(opts);
-    }
-    function _close(engine, callback) {
-      if (callback) {
-        process.nextTick(callback);
-      }
-      if (!engine._handle) {
-        return;
-      }
-      engine._handle.close();
-      engine._handle = null;
-    }
-    Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
-      if (typeof asyncCb === "function") {
-        return zlib.Inflate._processChunk.call(this, chunk, flushFlag, asyncCb);
-      }
-      let self = this;
-      let availInBefore = chunk && chunk.length;
-      let availOutBefore = this._chunkSize - this._offset;
-      let leftToInflate = this._maxLength;
-      let inOff = 0;
-      let buffers = [];
-      let nread = 0;
-      let error62;
-      this.on("error", function(err) {
-        error62 = err;
-      });
-      function handleChunk(availInAfter, availOutAfter) {
-        if (self._hadError) {
-          return;
-        }
-        let have = availOutBefore - availOutAfter;
-        assert2(have >= 0, "have should not go down");
-        if (have > 0) {
-          let out = self._buffer.slice(self._offset, self._offset + have);
-          self._offset += have;
-          if (out.length > leftToInflate) {
-            out = out.slice(0, leftToInflate);
-          }
-          buffers.push(out);
-          nread += out.length;
-          leftToInflate -= out.length;
-          if (leftToInflate === 0) {
-            return false;
-          }
-        }
-        if (availOutAfter === 0 || self._offset >= self._chunkSize) {
-          availOutBefore = self._chunkSize;
-          self._offset = 0;
-          self._buffer = Buffer.allocUnsafe(self._chunkSize);
-        }
-        if (availOutAfter === 0) {
-          inOff += availInBefore - availInAfter;
-          availInBefore = availInAfter;
-          return true;
-        }
-        return false;
-      }
-      assert2(this._handle, "zlib binding closed");
-      let res;
-      do {
-        res = this._handle.writeSync(
-          flushFlag,
-          chunk,
-          // in
-          inOff,
-          // in_off
-          availInBefore,
-          // in_len
-          this._buffer,
-          // out
-          this._offset,
-          //out_off
-          availOutBefore
-        );
-        res = res || this._writeState;
-      } while (!this._hadError && handleChunk(res[0], res[1]));
-      if (this._hadError) {
-        throw error62;
-      }
-      if (nread >= kMaxLength) {
-        _close(this);
-        throw new RangeError(
-          "Cannot create final Buffer. It would be larger than 0x" + kMaxLength.toString(16) + " bytes"
-        );
-      }
-      let buf = Buffer.concat(buffers, nread);
-      _close(this);
-      return buf;
-    };
-    util.inherits(Inflate, zlib.Inflate);
-    function zlibBufferSync(engine, buffer) {
-      if (typeof buffer === "string") {
-        buffer = Buffer.from(buffer);
-      }
-      if (!(buffer instanceof Buffer)) {
-        throw new TypeError("Not a string or buffer");
-      }
-      let flushFlag = engine._finishFlushFlag;
-      if (flushFlag == null) {
-        flushFlag = zlib.Z_FINISH;
-      }
-      return engine._processChunk(buffer, flushFlag);
-    }
-    function inflateSync(buffer, opts) {
-      return zlibBufferSync(new Inflate(opts), buffer);
-    }
-    module.exports = exports = inflateSync;
-    exports.Inflate = Inflate;
-    exports.createInflate = createInflate;
-    exports.inflateSync = inflateSync;
-  }
-});
-
-// node_modules/pngjs/lib/sync-reader.js
-var require_sync_reader = __commonJS({
-  "node_modules/pngjs/lib/sync-reader.js"(exports, module) {
-    "use strict";
-    var SyncReader = module.exports = function(buffer) {
-      this._buffer = buffer;
-      this._reads = [];
-    };
-    SyncReader.prototype.read = function(length, callback) {
-      this._reads.push({
-        length: Math.abs(length),
-        // if length < 0 then at most this length
-        allowLess: length < 0,
-        func: callback
-      });
-    };
-    SyncReader.prototype.process = function() {
-      while (this._reads.length > 0 && this._buffer.length) {
-        let read = this._reads[0];
-        if (this._buffer.length && (this._buffer.length >= read.length || read.allowLess)) {
-          this._reads.shift();
-          let buf = this._buffer;
-          this._buffer = buf.slice(read.length);
-          read.func.call(this, buf.slice(0, read.length));
-        } else {
-          break;
-        }
-      }
-      if (this._reads.length > 0) {
-        return new Error("There are some read requests waitng on finished stream");
-      }
-      if (this._buffer.length > 0) {
-        return new Error("unrecognised content at end of stream");
-      }
-    };
-  }
-});
-
-// node_modules/pngjs/lib/filter-parse-sync.js
-var require_filter_parse_sync = __commonJS({
-  "node_modules/pngjs/lib/filter-parse-sync.js"(exports) {
-    "use strict";
-    var SyncReader = require_sync_reader();
-    var Filter = require_filter_parse();
-    exports.process = function(inBuffer, bitmapInfo) {
-      let outBuffers = [];
-      let reader = new SyncReader(inBuffer);
-      let filter = new Filter(bitmapInfo, {
-        read: reader.read.bind(reader),
-        write: function(bufferPart) {
-          outBuffers.push(bufferPart);
-        },
-        complete: function() {
-        }
-      });
-      filter.start();
-      reader.process();
-      return Buffer.concat(outBuffers);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/parser-sync.js
-var require_parser_sync = __commonJS({
-  "node_modules/pngjs/lib/parser-sync.js"(exports, module) {
-    "use strict";
-    var hasSyncZlib = true;
-    var zlib = __require("zlib");
-    var inflateSync = require_sync_inflate();
-    if (!zlib.deflateSync) {
-      hasSyncZlib = false;
-    }
-    var SyncReader = require_sync_reader();
-    var FilterSync = require_filter_parse_sync();
-    var Parser = require_parser();
-    var bitmapper = require_bitmapper();
-    var formatNormaliser = require_format_normaliser();
-    module.exports = function(buffer, options) {
-      if (!hasSyncZlib) {
-        throw new Error(
-          "To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0"
-        );
-      }
-      let err;
-      function handleError(_err_) {
-        err = _err_;
-      }
-      let metaData;
-      function handleMetaData(_metaData_) {
-        metaData = _metaData_;
-      }
-      function handleTransColor(transColor) {
-        metaData.transColor = transColor;
-      }
-      function handlePalette(palette) {
-        metaData.palette = palette;
-      }
-      function handleSimpleTransparency() {
-        metaData.alpha = true;
-      }
-      let gamma;
-      function handleGamma(_gamma_) {
-        gamma = _gamma_;
-      }
-      let inflateDataList = [];
-      function handleInflateData(inflatedData2) {
-        inflateDataList.push(inflatedData2);
-      }
-      let reader = new SyncReader(buffer);
-      let parser = new Parser(options, {
-        read: reader.read.bind(reader),
-        error: handleError,
-        metadata: handleMetaData,
-        gamma: handleGamma,
-        palette: handlePalette,
-        transColor: handleTransColor,
-        inflateData: handleInflateData,
-        simpleTransparency: handleSimpleTransparency
-      });
-      parser.start();
-      reader.process();
-      if (err) {
-        throw err;
-      }
-      let inflateData = Buffer.concat(inflateDataList);
-      inflateDataList.length = 0;
-      let inflatedData;
-      if (metaData.interlace) {
-        inflatedData = zlib.inflateSync(inflateData);
-      } else {
-        let rowSize = (metaData.width * metaData.bpp * metaData.depth + 7 >> 3) + 1;
-        let imageSize = rowSize * metaData.height;
-        inflatedData = inflateSync(inflateData, {
-          chunkSize: imageSize,
-          maxLength: imageSize
-        });
-      }
-      inflateData = null;
-      if (!inflatedData || !inflatedData.length) {
-        throw new Error("bad png - invalid inflate data response");
-      }
-      let unfilteredData = FilterSync.process(inflatedData, metaData);
-      inflateData = null;
-      let bitmapData = bitmapper.dataToBitMap(unfilteredData, metaData);
-      unfilteredData = null;
-      let normalisedBitmapData = formatNormaliser(bitmapData, metaData);
-      metaData.data = normalisedBitmapData;
-      metaData.gamma = gamma || 0;
-      return metaData;
-    };
-  }
-});
-
-// node_modules/pngjs/lib/packer-sync.js
-var require_packer_sync = __commonJS({
-  "node_modules/pngjs/lib/packer-sync.js"(exports, module) {
-    "use strict";
-    var hasSyncZlib = true;
-    var zlib = __require("zlib");
-    if (!zlib.deflateSync) {
-      hasSyncZlib = false;
-    }
-    var constants = require_constants2();
-    var Packer = require_packer();
-    module.exports = function(metaData, opt) {
-      if (!hasSyncZlib) {
-        throw new Error(
-          "To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0"
-        );
-      }
-      let options = opt || {};
-      let packer = new Packer(options);
-      let chunks = [];
-      chunks.push(Buffer.from(constants.PNG_SIGNATURE));
-      chunks.push(packer.packIHDR(metaData.width, metaData.height));
-      if (metaData.gamma) {
-        chunks.push(packer.packGAMA(metaData.gamma));
-      }
-      let filteredData = packer.filterData(
-        metaData.data,
-        metaData.width,
-        metaData.height
-      );
-      let compressedData = zlib.deflateSync(
-        filteredData,
-        packer.getDeflateOptions()
-      );
-      filteredData = null;
-      if (!compressedData || !compressedData.length) {
-        throw new Error("bad png - invalid compressed data response");
-      }
-      chunks.push(packer.packIDAT(compressedData));
-      chunks.push(packer.packIEND());
-      return Buffer.concat(chunks);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/png-sync.js
-var require_png_sync = __commonJS({
-  "node_modules/pngjs/lib/png-sync.js"(exports) {
-    "use strict";
-    var parse5 = require_parser_sync();
-    var pack = require_packer_sync();
-    exports.read = function(buffer, options) {
-      return parse5(buffer, options || {});
-    };
-    exports.write = function(png, options) {
-      return pack(png, options);
-    };
-  }
-});
-
-// node_modules/pngjs/lib/png.js
-var require_png = __commonJS({
-  "node_modules/pngjs/lib/png.js"(exports) {
-    "use strict";
-    var util = __require("util");
-    var Stream = __require("stream");
-    var Parser = require_parser_async();
-    var Packer = require_packer_async();
-    var PNGSync = require_png_sync();
-    var PNG = exports.PNG = function(options) {
-      Stream.call(this);
-      options = options || {};
-      this.width = options.width | 0;
-      this.height = options.height | 0;
-      this.data = this.width > 0 && this.height > 0 ? Buffer.alloc(4 * this.width * this.height) : null;
-      if (options.fill && this.data) {
-        this.data.fill(0);
-      }
-      this.gamma = 0;
-      this.readable = this.writable = true;
-      this._parser = new Parser(options);
-      this._parser.on("error", this.emit.bind(this, "error"));
-      this._parser.on("close", this._handleClose.bind(this));
-      this._parser.on("metadata", this._metadata.bind(this));
-      this._parser.on("gamma", this._gamma.bind(this));
-      this._parser.on(
-        "parsed",
-        function(data2) {
-          this.data = data2;
-          this.emit("parsed", data2);
-        }.bind(this)
-      );
-      this._packer = new Packer(options);
-      this._packer.on("data", this.emit.bind(this, "data"));
-      this._packer.on("end", this.emit.bind(this, "end"));
-      this._parser.on("close", this._handleClose.bind(this));
-      this._packer.on("error", this.emit.bind(this, "error"));
-    };
-    util.inherits(PNG, Stream);
-    PNG.sync = PNGSync;
-    PNG.prototype.pack = function() {
-      if (!this.data || !this.data.length) {
-        this.emit("error", "No data provided");
-        return this;
-      }
-      process.nextTick(
-        function() {
-          this._packer.pack(this.data, this.width, this.height, this.gamma);
-        }.bind(this)
-      );
-      return this;
-    };
-    PNG.prototype.parse = function(data2, callback) {
-      if (callback) {
-        let onParsed, onError;
-        onParsed = function(parsedData) {
-          this.removeListener("error", onError);
-          this.data = parsedData;
-          callback(null, this);
-        }.bind(this);
-        onError = function(err) {
-          this.removeListener("parsed", onParsed);
-          callback(err, null);
-        }.bind(this);
-        this.once("parsed", onParsed);
-        this.once("error", onError);
-      }
-      this.end(data2);
-      return this;
-    };
-    PNG.prototype.write = function(data2) {
-      this._parser.write(data2);
-      return true;
-    };
-    PNG.prototype.end = function(data2) {
-      this._parser.end(data2);
-    };
-    PNG.prototype._metadata = function(metadata) {
-      this.width = metadata.width;
-      this.height = metadata.height;
-      this.emit("metadata", metadata);
-    };
-    PNG.prototype._gamma = function(gamma) {
-      this.gamma = gamma;
-    };
-    PNG.prototype._handleClose = function() {
-      if (!this._parser.writable && !this._packer.readable) {
-        this.emit("close");
-      }
-    };
-    PNG.bitblt = function(src, dst, srcX, srcY, width, height, deltaX, deltaY) {
-      srcX |= 0;
-      srcY |= 0;
-      width |= 0;
-      height |= 0;
-      deltaX |= 0;
-      deltaY |= 0;
-      if (srcX > src.width || srcY > src.height || srcX + width > src.width || srcY + height > src.height) {
-        throw new Error("bitblt reading outside image");
-      }
-      if (deltaX > dst.width || deltaY > dst.height || deltaX + width > dst.width || deltaY + height > dst.height) {
-        throw new Error("bitblt writing outside image");
-      }
-      for (let y = 0; y < height; y++) {
-        src.data.copy(
-          dst.data,
-          (deltaY + y) * dst.width + deltaX << 2,
-          (srcY + y) * src.width + srcX << 2,
-          (srcY + y) * src.width + srcX + width << 2
-        );
-      }
-    };
-    PNG.prototype.bitblt = function(dst, srcX, srcY, width, height, deltaX, deltaY) {
-      PNG.bitblt(this, dst, srcX, srcY, width, height, deltaX, deltaY);
-      return this;
-    };
-    PNG.adjustGamma = function(src) {
-      if (src.gamma) {
-        for (let y = 0; y < src.height; y++) {
-          for (let x = 0; x < src.width; x++) {
-            let idx = src.width * y + x << 2;
-            for (let i = 0; i < 3; i++) {
-              let sample = src.data[idx + i] / 255;
-              sample = Math.pow(sample, 1 / 2.2 / src.gamma);
-              src.data[idx + i] = Math.round(sample * 255);
-            }
-          }
-        }
-        src.gamma = 0;
-      }
-    };
-    PNG.prototype.adjustGamma = function() {
-      PNG.adjustGamma(this);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/utils.js
-var require_utils2 = __commonJS({
-  "node_modules/qrcode/lib/renderer/utils.js"(exports) {
-    function hex2rgba(hex3) {
-      if (typeof hex3 === "number") {
-        hex3 = hex3.toString();
-      }
-      if (typeof hex3 !== "string") {
-        throw new Error("Color should be defined as hex string");
-      }
-      let hexCode = hex3.slice().replace("#", "").split("");
-      if (hexCode.length < 3 || hexCode.length === 5 || hexCode.length > 8) {
-        throw new Error("Invalid hex color: " + hex3);
-      }
-      if (hexCode.length === 3 || hexCode.length === 4) {
-        hexCode = Array.prototype.concat.apply([], hexCode.map(function(c) {
-          return [c, c];
-        }));
-      }
-      if (hexCode.length === 6) hexCode.push("F", "F");
-      const hexValue = parseInt(hexCode.join(""), 16);
-      return {
-        r: hexValue >> 24 & 255,
-        g: hexValue >> 16 & 255,
-        b: hexValue >> 8 & 255,
-        a: hexValue & 255,
-        hex: "#" + hexCode.slice(0, 6).join("")
-      };
-    }
-    exports.getOptions = function getOptions(options) {
-      if (!options) options = {};
-      if (!options.color) options.color = {};
-      const margin = typeof options.margin === "undefined" || options.margin === null || options.margin < 0 ? 4 : options.margin;
-      const width = options.width && options.width >= 21 ? options.width : void 0;
-      const scale = options.scale || 4;
-      return {
-        width,
-        scale: width ? 4 : scale,
-        margin,
-        color: {
-          dark: hex2rgba(options.color.dark || "#000000ff"),
-          light: hex2rgba(options.color.light || "#ffffffff")
-        },
-        type: options.type,
-        rendererOpts: options.rendererOpts || {}
-      };
-    };
-    exports.getScale = function getScale(qrSize, opts) {
-      return opts.width && opts.width >= qrSize + opts.margin * 2 ? opts.width / (qrSize + opts.margin * 2) : opts.scale;
-    };
-    exports.getImageWidth = function getImageWidth(qrSize, opts) {
-      const scale = exports.getScale(qrSize, opts);
-      return Math.floor((qrSize + opts.margin * 2) * scale);
-    };
-    exports.qrToImageData = function qrToImageData(imgData, qr, opts) {
-      const size = qr.modules.size;
-      const data2 = qr.modules.data;
-      const scale = exports.getScale(size, opts);
-      const symbolSize = Math.floor((size + opts.margin * 2) * scale);
-      const scaledMargin = opts.margin * scale;
-      const palette = [opts.color.light, opts.color.dark];
-      for (let i = 0; i < symbolSize; i++) {
-        for (let j = 0; j < symbolSize; j++) {
-          let posDst = (i * symbolSize + j) * 4;
-          let pxColor = opts.color.light;
-          if (i >= scaledMargin && j >= scaledMargin && i < symbolSize - scaledMargin && j < symbolSize - scaledMargin) {
-            const iSrc = Math.floor((i - scaledMargin) / scale);
-            const jSrc = Math.floor((j - scaledMargin) / scale);
-            pxColor = palette[data2[iSrc * size + jSrc] ? 1 : 0];
-          }
-          imgData[posDst++] = pxColor.r;
-          imgData[posDst++] = pxColor.g;
-          imgData[posDst++] = pxColor.b;
-          imgData[posDst] = pxColor.a;
-        }
-      }
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/png.js
-var require_png2 = __commonJS({
-  "node_modules/qrcode/lib/renderer/png.js"(exports) {
-    var fs = __require("fs");
-    var PNG = require_png().PNG;
-    var Utils = require_utils2();
-    exports.render = function render(qrData, options) {
-      const opts = Utils.getOptions(options);
-      const pngOpts = opts.rendererOpts;
-      const size = Utils.getImageWidth(qrData.modules.size, opts);
-      pngOpts.width = size;
-      pngOpts.height = size;
-      const pngImage = new PNG(pngOpts);
-      Utils.qrToImageData(pngImage.data, qrData, opts);
-      return pngImage;
-    };
-    exports.renderToDataURL = function renderToDataURL(qrData, options, cb) {
-      if (typeof cb === "undefined") {
-        cb = options;
-        options = void 0;
-      }
-      exports.renderToBuffer(qrData, options, function(err, output2) {
-        if (err) cb(err);
-        let url2 = "data:image/png;base64,";
-        url2 += output2.toString("base64");
-        cb(null, url2);
-      });
-    };
-    exports.renderToBuffer = function renderToBuffer(qrData, options, cb) {
-      if (typeof cb === "undefined") {
-        cb = options;
-        options = void 0;
-      }
-      const png = exports.render(qrData, options);
-      const buffer = [];
-      png.on("error", cb);
-      png.on("data", function(data2) {
-        buffer.push(data2);
-      });
-      png.on("end", function() {
-        cb(null, Buffer.concat(buffer));
-      });
-      png.pack();
-    };
-    exports.renderToFile = function renderToFile(path, qrData, options, cb) {
-      if (typeof cb === "undefined") {
-        cb = options;
-        options = void 0;
-      }
-      let called = false;
-      const done = (...args) => {
-        if (called) return;
-        called = true;
-        cb.apply(null, args);
-      };
-      const stream = fs.createWriteStream(path);
-      stream.on("error", done);
-      stream.on("close", done);
-      exports.renderToFileStream(stream, qrData, options);
-    };
-    exports.renderToFileStream = function renderToFileStream(stream, qrData, options) {
-      const png = exports.render(qrData, options);
-      png.pack().pipe(stream);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/utf8.js
-var require_utf8 = __commonJS({
-  "node_modules/qrcode/lib/renderer/utf8.js"(exports) {
-    var Utils = require_utils2();
-    var BLOCK_CHAR = {
-      WW: " ",
-      WB: "\u2584",
-      BB: "\u2588",
-      BW: "\u2580"
-    };
-    var INVERTED_BLOCK_CHAR = {
-      BB: " ",
-      BW: "\u2584",
-      WW: "\u2588",
-      WB: "\u2580"
-    };
-    function getBlockChar(top, bottom, blocks) {
-      if (top && bottom) return blocks.BB;
-      if (top && !bottom) return blocks.BW;
-      if (!top && bottom) return blocks.WB;
-      return blocks.WW;
-    }
-    exports.render = function(qrData, options, cb) {
-      const opts = Utils.getOptions(options);
-      let blocks = BLOCK_CHAR;
-      if (opts.color.dark.hex === "#ffffff" || opts.color.light.hex === "#000000") {
-        blocks = INVERTED_BLOCK_CHAR;
-      }
-      const size = qrData.modules.size;
-      const data2 = qrData.modules.data;
-      let output2 = "";
-      let hMargin = Array(size + opts.margin * 2 + 1).join(blocks.WW);
-      hMargin = Array(opts.margin / 2 + 1).join(hMargin + "\n");
-      const vMargin = Array(opts.margin + 1).join(blocks.WW);
-      output2 += hMargin;
-      for (let i = 0; i < size; i += 2) {
-        output2 += vMargin;
-        for (let j = 0; j < size; j++) {
-          const topModule = data2[i * size + j];
-          const bottomModule = data2[(i + 1) * size + j];
-          output2 += getBlockChar(topModule, bottomModule, blocks);
-        }
-        output2 += vMargin + "\n";
-      }
-      output2 += hMargin.slice(0, -1);
-      if (typeof cb === "function") {
-        cb(null, output2);
-      }
-      return output2;
-    };
-    exports.renderToFile = function renderToFile(path, qrData, options, cb) {
-      if (typeof cb === "undefined") {
-        cb = options;
-        options = void 0;
-      }
-      const fs = __require("fs");
-      const utf8 = exports.render(qrData, options);
-      fs.writeFile(path, utf8, cb);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/terminal/terminal.js
-var require_terminal = __commonJS({
-  "node_modules/qrcode/lib/renderer/terminal/terminal.js"(exports) {
-    exports.render = function(qrData, options, cb) {
-      const size = qrData.modules.size;
-      const data2 = qrData.modules.data;
-      const black = "\x1B[40m  \x1B[0m";
-      const white = "\x1B[47m  \x1B[0m";
-      let output2 = "";
-      const hMargin = Array(size + 3).join(white);
-      const vMargin = Array(2).join(white);
-      output2 += hMargin + "\n";
-      for (let i = 0; i < size; ++i) {
-        output2 += white;
-        for (let j = 0; j < size; j++) {
-          output2 += data2[i * size + j] ? black : white;
-        }
-        output2 += vMargin + "\n";
-      }
-      output2 += hMargin + "\n";
-      if (typeof cb === "function") {
-        cb(null, output2);
-      }
-      return output2;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/terminal/terminal-small.js
-var require_terminal_small = __commonJS({
-  "node_modules/qrcode/lib/renderer/terminal/terminal-small.js"(exports) {
-    var backgroundWhite = "\x1B[47m";
-    var backgroundBlack = "\x1B[40m";
-    var foregroundWhite = "\x1B[37m";
-    var foregroundBlack = "\x1B[30m";
-    var reset = "\x1B[0m";
-    var lineSetupNormal = backgroundWhite + foregroundBlack;
-    var lineSetupInverse = backgroundBlack + foregroundWhite;
-    var createPalette = function(lineSetup, foregroundWhite2, foregroundBlack2) {
-      return {
-        // 1 ... white, 2 ... black, 0 ... transparent (default)
-        "00": reset + " " + lineSetup,
-        "01": reset + foregroundWhite2 + "\u2584" + lineSetup,
-        "02": reset + foregroundBlack2 + "\u2584" + lineSetup,
-        10: reset + foregroundWhite2 + "\u2580" + lineSetup,
-        11: " ",
-        12: "\u2584",
-        20: reset + foregroundBlack2 + "\u2580" + lineSetup,
-        21: "\u2580",
-        22: "\u2588"
-      };
-    };
-    var mkCodePixel = function(modules, size, x, y) {
-      const sizePlus = size + 1;
-      if (x >= sizePlus || y >= sizePlus || y < -1 || x < -1) return "0";
-      if (x >= size || y >= size || y < 0 || x < 0) return "1";
-      const idx = y * size + x;
-      return modules[idx] ? "2" : "1";
-    };
-    var mkCode = function(modules, size, x, y) {
-      return mkCodePixel(modules, size, x, y) + mkCodePixel(modules, size, x, y + 1);
-    };
-    exports.render = function(qrData, options, cb) {
-      const size = qrData.modules.size;
-      const data2 = qrData.modules.data;
-      const inverse = !!(options && options.inverse);
-      const lineSetup = options && options.inverse ? lineSetupInverse : lineSetupNormal;
-      const white = inverse ? foregroundBlack : foregroundWhite;
-      const black = inverse ? foregroundWhite : foregroundBlack;
-      const palette = createPalette(lineSetup, white, black);
-      const newLine = reset + "\n" + lineSetup;
-      let output2 = lineSetup;
-      for (let y = -1; y < size + 1; y += 2) {
-        for (let x = -1; x < size; x++) {
-          output2 += palette[mkCode(data2, size, x, y)];
-        }
-        output2 += palette[mkCode(data2, size, size, y)] + newLine;
-      }
-      output2 += reset;
-      if (typeof cb === "function") {
-        cb(null, output2);
-      }
-      return output2;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/terminal.js
-var require_terminal2 = __commonJS({
-  "node_modules/qrcode/lib/renderer/terminal.js"(exports) {
-    var big = require_terminal();
-    var small = require_terminal_small();
-    exports.render = function(qrData, options, cb) {
-      if (options && options.small) {
-        return small.render(qrData, options, cb);
-      }
-      return big.render(qrData, options, cb);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/svg-tag.js
-var require_svg_tag = __commonJS({
-  "node_modules/qrcode/lib/renderer/svg-tag.js"(exports) {
-    var Utils = require_utils2();
-    function getColorAttrib(color, attrib) {
-      const alpha = color.a / 255;
-      const str = attrib + '="' + color.hex + '"';
-      return alpha < 1 ? str + " " + attrib + '-opacity="' + alpha.toFixed(2).slice(1) + '"' : str;
-    }
-    function svgCmd(cmd, x, y) {
-      let str = cmd + x;
-      if (typeof y !== "undefined") str += " " + y;
-      return str;
-    }
-    function qrToPath(data2, size, margin) {
-      let path = "";
-      let moveBy = 0;
-      let newRow = false;
-      let lineLength = 0;
-      for (let i = 0; i < data2.length; i++) {
-        const col = Math.floor(i % size);
-        const row = Math.floor(i / size);
-        if (!col && !newRow) newRow = true;
-        if (data2[i]) {
-          lineLength++;
-          if (!(i > 0 && col > 0 && data2[i - 1])) {
-            path += newRow ? svgCmd("M", col + margin, 0.5 + row + margin) : svgCmd("m", moveBy, 0);
-            moveBy = 0;
-            newRow = false;
-          }
-          if (!(col + 1 < size && data2[i + 1])) {
-            path += svgCmd("h", lineLength);
-            lineLength = 0;
-          }
-        } else {
-          moveBy++;
-        }
-      }
-      return path;
-    }
-    exports.render = function render(qrData, options, cb) {
-      const opts = Utils.getOptions(options);
-      const size = qrData.modules.size;
-      const data2 = qrData.modules.data;
-      const qrcodesize = size + opts.margin * 2;
-      const bg = !opts.color.light.a ? "" : "<path " + getColorAttrib(opts.color.light, "fill") + ' d="M0 0h' + qrcodesize + "v" + qrcodesize + 'H0z"/>';
-      const path = "<path " + getColorAttrib(opts.color.dark, "stroke") + ' d="' + qrToPath(data2, size, opts.margin) + '"/>';
-      const viewBox = 'viewBox="0 0 ' + qrcodesize + " " + qrcodesize + '"';
-      const width = !opts.width ? "" : 'width="' + opts.width + '" height="' + opts.width + '" ';
-      const svgTag = '<svg xmlns="http://www.w3.org/2000/svg" ' + width + viewBox + ' shape-rendering="crispEdges">' + bg + path + "</svg>\n";
-      if (typeof cb === "function") {
-        cb(null, svgTag);
-      }
-      return svgTag;
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/svg.js
-var require_svg = __commonJS({
-  "node_modules/qrcode/lib/renderer/svg.js"(exports) {
-    var svgTagRenderer = require_svg_tag();
-    exports.render = svgTagRenderer.render;
-    exports.renderToFile = function renderToFile(path, qrData, options, cb) {
-      if (typeof cb === "undefined") {
-        cb = options;
-        options = void 0;
-      }
-      const fs = __require("fs");
-      const svgTag = exports.render(qrData, options);
-      const xmlStr = '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">' + svgTag;
-      fs.writeFile(path, xmlStr, cb);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/renderer/canvas.js
-var require_canvas = __commonJS({
-  "node_modules/qrcode/lib/renderer/canvas.js"(exports) {
-    var Utils = require_utils2();
-    function clearCanvas(ctx, canvas, size) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!canvas.style) canvas.style = {};
-      canvas.height = size;
-      canvas.width = size;
-      canvas.style.height = size + "px";
-      canvas.style.width = size + "px";
-    }
-    function getCanvasElement() {
-      try {
-        return document.createElement("canvas");
-      } catch (e) {
-        throw new Error("You need to specify a canvas element");
-      }
-    }
-    exports.render = function render(qrData, canvas, options) {
-      let opts = options;
-      let canvasEl = canvas;
-      if (typeof opts === "undefined" && (!canvas || !canvas.getContext)) {
-        opts = canvas;
-        canvas = void 0;
-      }
-      if (!canvas) {
-        canvasEl = getCanvasElement();
-      }
-      opts = Utils.getOptions(opts);
-      const size = Utils.getImageWidth(qrData.modules.size, opts);
-      const ctx = canvasEl.getContext("2d");
-      const image = ctx.createImageData(size, size);
-      Utils.qrToImageData(image.data, qrData, opts);
-      clearCanvas(ctx, canvasEl, size);
-      ctx.putImageData(image, 0, 0);
-      return canvasEl;
-    };
-    exports.renderToDataURL = function renderToDataURL(qrData, canvas, options) {
-      let opts = options;
-      if (typeof opts === "undefined" && (!canvas || !canvas.getContext)) {
-        opts = canvas;
-        canvas = void 0;
-      }
-      if (!opts) opts = {};
-      const canvasEl = exports.render(qrData, canvas, opts);
-      const type = opts.type || "image/png";
-      const rendererOpts = opts.rendererOpts || {};
-      return canvasEl.toDataURL(type, rendererOpts.quality);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/browser.js
-var require_browser = __commonJS({
-  "node_modules/qrcode/lib/browser.js"(exports) {
-    var canPromise = require_can_promise();
-    var QRCode = require_qrcode();
-    var CanvasRenderer = require_canvas();
-    var SvgRenderer = require_svg_tag();
-    function renderCanvas(renderFunc, canvas, text, opts, cb) {
-      const args = [].slice.call(arguments, 1);
-      const argsNum = args.length;
-      const isLastArgCb = typeof args[argsNum - 1] === "function";
-      if (!isLastArgCb && !canPromise()) {
-        throw new Error("Callback required as last argument");
-      }
-      if (isLastArgCb) {
-        if (argsNum < 2) {
-          throw new Error("Too few arguments provided");
-        }
-        if (argsNum === 2) {
-          cb = text;
-          text = canvas;
-          canvas = opts = void 0;
-        } else if (argsNum === 3) {
-          if (canvas.getContext && typeof cb === "undefined") {
-            cb = opts;
-            opts = void 0;
-          } else {
-            cb = opts;
-            opts = text;
-            text = canvas;
-            canvas = void 0;
-          }
-        }
-      } else {
-        if (argsNum < 1) {
-          throw new Error("Too few arguments provided");
-        }
-        if (argsNum === 1) {
-          text = canvas;
-          canvas = opts = void 0;
-        } else if (argsNum === 2 && !canvas.getContext) {
-          opts = text;
-          text = canvas;
-          canvas = void 0;
-        }
-        return new Promise(function(resolve3, reject) {
-          try {
-            const data2 = QRCode.create(text, opts);
-            resolve3(renderFunc(data2, canvas, opts));
-          } catch (e) {
-            reject(e);
-          }
-        });
-      }
-      try {
-        const data2 = QRCode.create(text, opts);
-        cb(null, renderFunc(data2, canvas, opts));
-      } catch (e) {
-        cb(e);
-      }
-    }
-    exports.create = QRCode.create;
-    exports.toCanvas = renderCanvas.bind(null, CanvasRenderer.render);
-    exports.toDataURL = renderCanvas.bind(null, CanvasRenderer.renderToDataURL);
-    exports.toString = renderCanvas.bind(null, function(data2, _, opts) {
-      return SvgRenderer.render(data2, opts);
-    });
-  }
-});
-
-// node_modules/qrcode/lib/server.js
-var require_server = __commonJS({
-  "node_modules/qrcode/lib/server.js"(exports) {
-    var canPromise = require_can_promise();
-    var QRCode = require_qrcode();
-    var PngRenderer = require_png2();
-    var Utf8Renderer = require_utf8();
-    var TerminalRenderer = require_terminal2();
-    var SvgRenderer = require_svg();
-    function checkParams(text, opts, cb) {
-      if (typeof text === "undefined") {
-        throw new Error("String required as first argument");
-      }
-      if (typeof cb === "undefined") {
-        cb = opts;
-        opts = {};
-      }
-      if (typeof cb !== "function") {
-        if (!canPromise()) {
-          throw new Error("Callback required as last argument");
-        } else {
-          opts = cb || {};
-          cb = null;
-        }
-      }
-      return {
-        opts,
-        cb
-      };
-    }
-    function getTypeFromFilename(path) {
-      return path.slice((path.lastIndexOf(".") - 1 >>> 0) + 2).toLowerCase();
-    }
-    function getRendererFromType(type) {
-      switch (type) {
-        case "svg":
-          return SvgRenderer;
-        case "txt":
-        case "utf8":
-          return Utf8Renderer;
-        case "png":
-        case "image/png":
-        default:
-          return PngRenderer;
-      }
-    }
-    function getStringRendererFromType(type) {
-      switch (type) {
-        case "svg":
-          return SvgRenderer;
-        case "terminal":
-          return TerminalRenderer;
-        case "utf8":
-        default:
-          return Utf8Renderer;
-      }
-    }
-    function render(renderFunc, text, params) {
-      if (!params.cb) {
-        return new Promise(function(resolve3, reject) {
-          try {
-            const data2 = QRCode.create(text, params.opts);
-            return renderFunc(data2, params.opts, function(err, data3) {
-              return err ? reject(err) : resolve3(data3);
-            });
-          } catch (e) {
-            reject(e);
-          }
-        });
-      }
-      try {
-        const data2 = QRCode.create(text, params.opts);
-        return renderFunc(data2, params.opts, params.cb);
-      } catch (e) {
-        params.cb(e);
-      }
-    }
-    exports.create = QRCode.create;
-    exports.toCanvas = require_browser().toCanvas;
-    exports.toString = function toString(text, opts, cb) {
-      const params = checkParams(text, opts, cb);
-      const type = params.opts ? params.opts.type : void 0;
-      const renderer = getStringRendererFromType(type);
-      return render(renderer.render, text, params);
-    };
-    exports.toDataURL = function toDataURL(text, opts, cb) {
-      const params = checkParams(text, opts, cb);
-      const renderer = getRendererFromType(params.opts.type);
-      return render(renderer.renderToDataURL, text, params);
-    };
-    exports.toBuffer = function toBuffer(text, opts, cb) {
-      const params = checkParams(text, opts, cb);
-      const renderer = getRendererFromType(params.opts.type);
-      return render(renderer.renderToBuffer, text, params);
-    };
-    exports.toFile = function toFile(path, text, opts, cb) {
-      if (typeof path !== "string" || !(typeof text === "string" || typeof text === "object")) {
-        throw new Error("Invalid argument");
-      }
-      if (arguments.length < 3 && !canPromise()) {
-        throw new Error("Too few arguments provided");
-      }
-      const params = checkParams(text, opts, cb);
-      const type = params.opts.type || getTypeFromFilename(path);
-      const renderer = getRendererFromType(type);
-      const renderToFile = renderer.renderToFile.bind(null, path);
-      return render(renderToFile, text, params);
-    };
-    exports.toFileStream = function toFileStream(stream, text, opts) {
-      if (arguments.length < 2) {
-        throw new Error("Too few arguments provided");
-      }
-      const params = checkParams(text, opts, stream.emit.bind(stream, "error"));
-      const renderer = getRendererFromType("png");
-      const renderToFileStream = renderer.renderToFileStream.bind(null, stream);
-      render(renderToFileStream, text, params);
-    };
-  }
-});
-
-// node_modules/qrcode/lib/index.js
-var require_lib = __commonJS({
-  "node_modules/qrcode/lib/index.js"(exports, module) {
-    module.exports = require_server();
-  }
-});
-
 // src/config.ts
 import { hostname as hostname3 } from "node:os";
 
@@ -28013,117 +23480,6 @@ function resolveConfig(input3) {
   };
 }
 
-// src/harness-version.ts
-import { readFile, realpath as realpathEntrypoint } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { dirname, isAbsolute, join } from "node:path";
-var HARNESS_PACKAGE_NAME = "@deepseek-ai/dsh";
-function normalizeHarnessVersion(value) {
-  if (typeof value !== "string") return void 0;
-  const version2 = value.trim();
-  if (version2.length === 0 || version2.length > 64 || /[\u0000-\u001f]/u.test(version2)) return void 0;
-  return version2;
-}
-function harnessSessionGeneration(version2) {
-  if (version2 === void 0) return "legacy";
-  const match = /^(?:dsh-)?v?(\d+)\.(\d+)\.(\d+)(?:-|$)/u.exec(version2.trim());
-  if (match === null) return "legacy";
-  const major = Number(match[1]);
-  const minor = Number(match[2]);
-  const patch = Number(match[3]);
-  return major === 0 && (minor === 1 && patch >= 5 || minor === 2) ? "v3" : "legacy";
-}
-async function readHarnessManifestVersion(manifestPath) {
-  try {
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    if (manifest.name !== HARNESS_PACKAGE_NAME) return void 0;
-    return normalizeHarnessVersion(manifest.version);
-  } catch {
-    return void 0;
-  }
-}
-async function readHarnessDistributionVersion(entrypoint = process.argv[1]) {
-  if (entrypoint === void 0 || !isAbsolute(entrypoint)) return void 0;
-  let resolvedEntrypoint = entrypoint;
-  try {
-    resolvedEntrypoint = await realpathEntrypoint(entrypoint);
-  } catch {
-  }
-  if (!isAbsolute(resolvedEntrypoint)) return void 0;
-  let directory = dirname(resolvedEntrypoint);
-  for (let depth = 0; depth < 8; depth += 1) {
-    const version2 = await readHarnessManifestVersion(join(directory, "package.json"));
-    if (version2 !== void 0) return version2;
-    const parent = dirname(directory);
-    if (parent === directory) break;
-    directory = parent;
-  }
-  try {
-    return await readHarnessManifestVersion(createRequire(resolvedEntrypoint).resolve(`${HARNESS_PACKAGE_NAME}/package.json`));
-  } catch {
-    return void 0;
-  }
-}
-
-// src/logging.ts
-var levels = ["debug", "info", "warn", "error"];
-var secretKey = /authorization|cookie|token|secret|private|shared|ciphertext|payload|prompt|source|workspace|output|registrationCode|deviceCode/i;
-var SafeLogger = class {
-  constructor(sink, threshold = "info") {
-    this.sink = sink;
-    this.threshold = threshold;
-  }
-  debug(message, fields) {
-    this.write("debug", message, fields);
-  }
-  info(message, fields) {
-    this.write("info", message, fields);
-  }
-  warn(message, fields) {
-    this.write("warn", message, fields);
-  }
-  error(message, fields) {
-    this.write("error", message, fields);
-  }
-  write(level, message, fields) {
-    if (levels.indexOf(level) < levels.indexOf(this.threshold)) return;
-    const safeFields = fields === void 0 ? "" : ` ${JSON.stringify(redact(fields))}`;
-    this.sink[level](`[dsh-remote] ${message}${safeFields}`);
-  }
-};
-function redact(value, key = "") {
-  if (secretKey.test(key)) return "[REDACTED]";
-  if (Array.isArray(value)) return value.map((item) => redact(item));
-  if (typeof value !== "object" || value === null) return value;
-  return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, redact(child, childKey)]));
-}
-
-// src/owner-peer.ts
-function createOwnerPeerFactory(ctx, constructor, connection) {
-  return () => {
-    if (constructor !== void 0) {
-      try {
-        return new constructor(ctx, { principal: { kind: "owner" }, interactions: "answer" });
-      } catch {
-      }
-    }
-    const createPeer = connection?.createPeer;
-    if (typeof createPeer !== "function") return void 0;
-    try {
-      return createPeer.call(connection, { principal: { kind: "owner" }, interactions: "answer" });
-    } catch {
-      return void 0;
-    }
-  };
-}
-
-// src/paths.ts
-import { homedir } from "node:os";
-import { join as join2 } from "node:path";
-function langoRoot(env = process.env) {
-  return join2(env.DSH_HOME || join2(homedir(), ".dsh"), "lango");
-}
-
 // src/protocol/loopback.ts
 var LOOPBACK_CHUNK_BYTES = 64 * 1024;
 var LOOPBACK_MAX_BODY_BYTES = 1024 * 1024;
@@ -28184,6 +23540,8 @@ var LOCAL_PAIRING_URI_SCHEME = "dshremote:";
 var LOCAL_PAIRING_URI_HOST = "local-pair";
 var LOCAL_PAIRING_WINDOW_MS = 5 * 6e4;
 var LOCAL_PAIRING_MAX_FAILURES = 5;
+var LOCAL_PAIRING_APPROVAL_MS = 12e4;
+var LOCAL_PAIR_APPROVAL_CAPABILITY = "local.pair.approval.v1";
 var LOCAL_PREAUTH_TIMEOUT_MS = 1e4;
 var LOCAL_MAX_PREAUTH_FRAME_BYTES = 8 * 1024;
 var LOCAL_MAX_TRANSPORT_FRAME_BYTES = 65535;
@@ -28240,6 +23598,7 @@ var localControlFrameSchema = external_exports.discriminatedUnion("type", [
 ]);
 var localPairFrameSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ v: external_exports.literal(LOCAL_DIRECT_VERSION), type: external_exports.literal("local.pair.prove"), payload: external_exports.object({ proof: fixedBase64Url(32) }).strict() }).strict(),
+  external_exports.object({ v: external_exports.literal(LOCAL_DIRECT_VERSION), type: external_exports.literal("local.pair.pending"), payload: external_exports.object({ timeoutMs: external_exports.number().int().min(1e3).max(6e5) }).strict() }).strict(),
   external_exports.object({ v: external_exports.literal(LOCAL_DIRECT_VERSION), type: external_exports.literal("local.pair.ok"), payload: external_exports.object({ pairingId: deviceIdSchema }).strict() }).strict()
 ]);
 function encodeLocalControlFrame(frame) {
@@ -28411,6 +23770,7 @@ var rpcMethods = [
   "workspace.upload.commit",
   "workspace.upload.abort",
   "harness.transport.describe",
+  "harness.transport.ping",
   "remote.history.configure",
   "harness.api.call",
   "harness.api.transfer.open",
@@ -28911,6 +24271,7 @@ var ConnectionController = class {
     this.logger = logger;
   }
   active = /* @__PURE__ */ new Map();
+  listeners = /* @__PURE__ */ new Set();
   acceptQueue = Promise.resolve();
   accept(channel) {
     const operation = this.acceptQueue.then(() => this.acceptOne(channel));
@@ -28952,13 +24313,21 @@ var ConnectionController = class {
     };
     this.active.set(connectionId, connection);
     try {
-      connection.unsubscribe = channel.onMessage((message) => {
+      const stopMessages = channel.onMessage((message) => {
         void this.handle(connection, message);
       });
+      const stopClose = channel.onClose?.(() => {
+        void this.disconnect(connection);
+      }) ?? (() => void 0);
+      connection.unsubscribe = () => {
+        stopMessages();
+        stopClose();
+      };
     } catch (error62) {
       await this.disconnect(connection);
       throw error62;
     }
+    this.emit();
     this.logger?.info("peer connection accepted", {
       peerDeviceId: shortId(channel.peerDeviceId),
       connectionId: shortId(connectionId),
@@ -28981,9 +24350,14 @@ var ConnectionController = class {
       const deviceId = connection.channel.peerDeviceId;
       if (seen.has(deviceId)) continue;
       seen.add(deviceId);
+      const { channel } = connection;
       peers.push({
         deviceId,
-        ...connection.channel.mode === void 0 ? {} : { mode: connection.channel.mode }
+        connectionId: channel.security.connectionId,
+        ...channel.mode === void 0 ? {} : { mode: channel.mode },
+        ...channel.remoteAddress === void 0 ? {} : { address: channel.remoteAddress },
+        ...channel.connectedAt === void 0 ? {} : { connectedAt: channel.connectedAt },
+        ...channel.rttMs === void 0 ? {} : { rttMs: channel.rttMs }
       });
     }
     return peers;
@@ -28998,6 +24372,19 @@ var ConnectionController = class {
   }
   async send(message) {
     await Promise.all([...this.active.values()].map((connection) => this.sendConnection(connection, message)));
+  }
+  /** Measure the round-trip time of every connection of one device; the fastest answer wins. */
+  async measure(deviceId) {
+    const results = await Promise.all([...this.active.values()].filter((connection) => connection.channel.peerDeviceId === deviceId).map((connection) => connection.channel.measureRtt?.() ?? Promise.resolve(void 0)));
+    const measured = results.filter((value) => value !== void 0);
+    return measured.length === 0 ? void 0 : Math.min(...measured);
+  }
+  /** Accepted and closed connections, for status pushes. */
+  onChange(listener) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
   async revoke(deviceId) {
     const revoked = [...this.active.values()].filter((connection) => connection.channel.peerDeviceId === deviceId);
@@ -29078,6 +24465,7 @@ var ConnectionController = class {
     if (!this.isActive(connection)) return;
     this.active.delete(connection.channel.security.connectionId);
     connection.unsubscribe();
+    this.emit();
     try {
       await connection.router.closePeerStreams();
     } finally {
@@ -29090,6 +24478,14 @@ var ConnectionController = class {
       closedBy: detail?.closedBy ?? "host",
       ...detail?.retryable === void 0 ? {} : { retryable: detail.retryable }
     });
+  }
+  emit() {
+    for (const listener of this.listeners) {
+      try {
+        listener();
+      } catch {
+      }
+    }
   }
   isActive(connection) {
     return this.active.get(connection.channel.security.connectionId) === connection;
@@ -29178,7 +24574,7 @@ function compactHistory(value) {
 // src/harness-remote-bridge.ts
 import { randomUUID } from "node:crypto";
 import { lstat, realpath, stat as stat2 } from "node:fs/promises";
-import { dirname as dirname3, isAbsolute as isAbsolute3, join as join3, parse as parse4, relative, resolve as resolve2, sep } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute3, join as join2, parse as parse4, relative, resolve as resolve2, sep } from "node:path";
 
 // src/safe-error.ts
 var RpcError = class extends Error {
@@ -29521,9 +24917,61 @@ var TerminalPolicy = class _TerminalPolicy {
   }
 };
 
+// src/harness-version.ts
+import { readFile, realpath as realpathEntrypoint } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { dirname, isAbsolute, join } from "node:path";
+var HARNESS_PACKAGE_NAME = "@deepseek-ai/dsh";
+function normalizeHarnessVersion(value) {
+  if (typeof value !== "string") return void 0;
+  const version2 = value.trim();
+  if (version2.length === 0 || version2.length > 64 || /[\u0000-\u001f]/u.test(version2)) return void 0;
+  return version2;
+}
+function harnessSessionGeneration(version2) {
+  if (version2 === void 0) return "legacy";
+  const match = /^(?:dsh-)?v?(\d+)\.(\d+)\.(\d+)(?:-|$)/u.exec(version2.trim());
+  if (match === null) return "legacy";
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+  return major === 0 && (minor === 1 && patch >= 5 || minor === 2) ? "v3" : "legacy";
+}
+async function readHarnessManifestVersion(manifestPath) {
+  try {
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (manifest.name !== HARNESS_PACKAGE_NAME) return void 0;
+    return normalizeHarnessVersion(manifest.version);
+  } catch {
+    return void 0;
+  }
+}
+async function readHarnessDistributionVersion(entrypoint = process.argv[1]) {
+  if (entrypoint === void 0 || !isAbsolute(entrypoint)) return void 0;
+  let resolvedEntrypoint = entrypoint;
+  try {
+    resolvedEntrypoint = await realpathEntrypoint(entrypoint);
+  } catch {
+  }
+  if (!isAbsolute(resolvedEntrypoint)) return void 0;
+  let directory = dirname(resolvedEntrypoint);
+  for (let depth = 0; depth < 8; depth += 1) {
+    const version2 = await readHarnessManifestVersion(join(directory, "package.json"));
+    if (version2 !== void 0) return version2;
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  try {
+    return await readHarnessManifestVersion(createRequire(resolvedEntrypoint).resolve(`${HARNESS_PACKAGE_NAME}/package.json`));
+  } catch {
+    return void 0;
+  }
+}
+
 // src/remote-directory-browser.ts
 import { mkdir, readdir, stat } from "node:fs/promises";
-import { homedir as homedir2, platform } from "node:os";
+import { homedir, platform } from "node:os";
 import { basename, dirname as dirname2, isAbsolute as isAbsolute2, parse as parse3, resolve } from "node:path";
 var MAX_ENTRIES = 500;
 async function ensureHostWorkspaceDirectory(path) {
@@ -29534,7 +24982,7 @@ async function ensureHostWorkspaceDirectory(path) {
 }
 async function listRemoteDirectory(path, signal) {
   signal?.throwIfAborted();
-  const home = resolve(homedir2());
+  const home = resolve(homedir());
   const target2 = path === void 0 || path.trim() === "" ? home : resolve(path);
   if (!isAbsolute2(target2)) throw new Error("The remote directory path must be absolute.");
   const rows = await readdir(target2, { withFileTypes: true });
@@ -29578,6 +25026,7 @@ var emptyParamsSchema = external_exports.object({}).strict();
 var historyConfigureSchema = external_exports.object({ compact: external_exports.boolean() }).strict();
 var apiMethods = /* @__PURE__ */ new Set([
   "harness.transport.describe",
+  "harness.transport.ping",
   "remote.history.configure",
   "harness.remote.call",
   "harness.remote.transfer.open",
@@ -29643,9 +25092,14 @@ var RpcRouter = class {
         const capabilities = [.../* @__PURE__ */ new Set([
           ...this.capabilities(),
           "remote.history.compact.v1",
+          "harness.transport.ping.v1",
           ...this.harnessRemote === void 0 ? [] : ["harness.remote.stream.transfer.v1"]
         ])];
         return { capabilities };
+      }
+      case "harness.transport.ping": {
+        emptyParamsSchema.parse(params);
+        return {};
       }
       case "remote.history.configure": {
         const { compact } = historyConfigureSchema.parse(params);
@@ -30224,7 +25678,7 @@ var HarnessRemoteBridge = class {
   }
   async pump(streamId, source, signal, historyFollow = false, transferFrames = false) {
     let reason = "completed";
-    let failure2;
+    let failure3;
     try {
       for await (const value of source) {
         if (signal.aborted) break;
@@ -30243,13 +25697,13 @@ var HarnessRemoteBridge = class {
       if (signal.aborted) reason = "cancelled";
     } catch (error62) {
       reason = signal.aborted ? "cancelled" : "failed";
-      if (!signal.aborted) failure2 = this.gateway.failure(error62);
+      if (!signal.aborted) failure3 = this.gateway.failure(error62);
     } finally {
       this.streams.delete(streamId);
       await this.publish("harness.remote.stream.closed", {
         streamId,
         reason,
-        ...failure2 === void 0 ? {} : { failure: failure2 }
+        ...failure3 === void 0 ? {} : { failure: failure3 }
       }).catch(() => void 0);
     }
   }
@@ -30411,7 +25865,7 @@ var HarnessRemoteBridge = class {
       const parts = rel.split(sep).filter((p) => p.length > 0 && p !== ".");
       let currentPath = base;
       for (let i = 0; i < parts.length - 1; i++) {
-        currentPath = join3(currentPath, parts[i]);
+        currentPath = join2(currentPath, parts[i]);
         const dirRel = relative(base, currentPath);
         if (isPathOutside(dirRel)) {
           throw new RpcError("WORKSPACE_PATH_DENIED", "The requested workspace path is outside the workspace.");
@@ -34966,8 +30420,8 @@ function validateMSMScalars2(scalars, field, maxScalar) {
   if (!Array.isArray(scalars))
     throw new Error("array of scalars expected");
   scalars.forEach((s, i) => {
-    const ok = maxScalar === void 0 ? field.isValid(s) : isPosBig2(s) && s < maxScalar;
-    if (!ok)
+    const ok2 = maxScalar === void 0 ? field.isValid(s) : isPosBig2(s) && s < maxScalar;
+    if (!ok2)
       throw new Error("invalid scalar at index " + i);
   });
 }
@@ -37958,6 +33412,7 @@ function constantTimeEqual(left, right) {
 // src/crypto/local.ts
 var LOCAL_PAIRING_CODE_BYTES = 16;
 var PROOF_LABEL = new TextEncoder().encode("DSH-REMOTE-LOCAL\0pair-proof\0v=1\0");
+var SAS_LABEL = new TextEncoder().encode("DSH-REMOTE-LOCAL\0pair-sas\0v=1\0");
 function generateLocalPairingCode(random = randomBytes2) {
   const code = random(LOCAL_PAIRING_CODE_BYTES);
   if (code.byteLength !== LOCAL_PAIRING_CODE_BYTES) throw new Error("Pairing code randomness has the wrong length.");
@@ -37983,6 +33438,11 @@ function verifyLocalPairingProof(pairingCode, handshakeHash, proof) {
   let different = 0;
   for (let index = 0; index < expected.byteLength; index += 1) different |= expected[index] ^ actual[index];
   return different === 0;
+}
+function localPairingConfirmationCode(handshakeHash) {
+  const digest = sha2562(concat2(SAS_LABEL, handshakeHash));
+  const value = (digest[0] << 24 | digest[1] << 16 | digest[2] << 8 | digest[3]) >>> 0;
+  return String(value % 1e6).padStart(6, "0");
 }
 function requirePairingCode(value) {
   let bytes;
@@ -38067,15 +33527,11 @@ var import_subprotocol = __toESM(require_subprotocol(), 1);
 var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
-// src/local-pairing.ts
-import { chmod as chmod2, mkdir as mkdir3, readFile as readFile3, rename as rename2, rm as rm2, stat as stat4, writeFile as writeFile2 } from "node:fs/promises";
-import { join as join5 } from "node:path";
-
 // src/identity-store.ts
 import { createHash } from "node:crypto";
 import { chmod, mkdir as mkdir2, readFile as readFile2, readdir as readdir2, rename, rm, stat as stat3, unlink, writeFile } from "node:fs/promises";
-import { homedir as homedir3 } from "node:os";
-import { dirname as dirname4, join as join4 } from "node:path";
+import { homedir as homedir2 } from "node:os";
+import { dirname as dirname4, join as join3 } from "node:path";
 var identitySchema = external_exports.object({
   schemaVersion: external_exports.literal(1),
   deviceId: external_exports.string().uuid(),
@@ -38105,16 +33561,16 @@ var IdentityStore = class {
   peers = /* @__PURE__ */ new Map();
   constructor(options = {}) {
     const env = options.env ?? process.env;
-    const dshHome = env.DSH_HOME || join4(options.homeDirectory ?? homedir3(), ".dsh");
-    this.directory = options.directory ?? join4(dshHome, "remote");
+    const dshHome = env.DSH_HOME || join3(options.homeDirectory ?? homedir2(), ".dsh");
+    this.directory = options.directory ?? join3(dshHome, "remote");
   }
   async loadOrCreate(deviceName) {
     await ensureDirectory(this.directory);
     return withIdentityLock(this.directory, () => this.loadOrCreateLocked(deviceName));
   }
   async loadOrCreateLocked(deviceName) {
-    const devicePath = join4(this.directory, "device.json");
-    const keyPath = join4(this.directory, "device.key");
+    const devicePath = join3(this.directory, "device.json");
+    const keyPath = join3(this.directory, "device.key");
     const [hasDevice, hasKey] = await Promise.all([exists(devicePath), exists(keyPath)]);
     if (hasDevice !== hasKey) {
       throw new IdentityInvalidError("device identity is incomplete; repair it explicitly before reconnecting");
@@ -38197,7 +33653,7 @@ var IdentityStore = class {
     return removed;
   }
   async loadPeers() {
-    const path = join4(this.directory, "trusted-peers.json");
+    const path = join3(this.directory, "trusted-peers.json");
     if (!await exists(path)) {
       await atomicJsonWrite(path, { schemaVersion: 1, peers: [] }, 384);
     }
@@ -38213,7 +33669,7 @@ var IdentityStore = class {
     this.peers = peers;
   }
   async savePeers() {
-    await atomicJsonWrite(join4(this.directory, "trusted-peers.json"), {
+    await atomicJsonWrite(join3(this.directory, "trusted-peers.json"), {
       schemaVersion: 1,
       peers: [...this.peers.values()]
     }, 384);
@@ -38262,7 +33718,7 @@ var LOCK_TIMEOUT_MS = 15e3;
 var LOCK_RETRY_INITIAL_MS = 20;
 var LOCK_RETRY_MAX_MS = 200;
 async function withIdentityLock(directory, operation) {
-  const lockPath = join4(directory, LOCK_FILE_NAME);
+  const lockPath = join3(directory, LOCK_FILE_NAME);
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   let delay = LOCK_RETRY_INITIAL_MS;
   for (; ; ) {
@@ -38341,7 +33797,7 @@ async function removeIdentityRecords(directory) {
   } catch {
     return;
   }
-  await Promise.all(entries.filter((name2) => !isLockArtifact(name2)).map((name2) => rm(join4(directory, name2), { recursive: true, force: true })));
+  await Promise.all(entries.filter((name2) => !isLockArtifact(name2)).map((name2) => rm(join3(directory, name2), { recursive: true, force: true })));
 }
 function isLockArtifact(name2) {
   return name2 === LOCK_FILE_NAME || name2.startsWith(`${LOCK_FILE_NAME}.takeover-`);
@@ -38353,13 +33809,15 @@ async function removeStaleTemporaries(directory) {
   } catch {
     return;
   }
-  await Promise.all(entries.filter((name2) => name2.startsWith("device.json.") || name2.startsWith("device.key.")).filter((name2) => name2.endsWith(".tmp")).map((name2) => unlink(join4(directory, name2)).catch(() => void 0)));
+  await Promise.all(entries.filter((name2) => name2.startsWith("device.json.") || name2.startsWith("device.key.")).filter((name2) => name2.endsWith(".tmp")).map((name2) => unlink(join3(directory, name2)).catch(() => void 0)));
 }
 
 // src/local-pairing.ts
+import { chmod as chmod2, mkdir as mkdir3, readFile as readFile3, rename as rename2, rm as rm2, stat as stat4, writeFile as writeFile2 } from "node:fs/promises";
+import { join as join4 } from "node:path";
 var LOCAL_MEMBERSHIP_PREFIX = "local:";
 function localStorageDirectory(root) {
-  return join5(root, "local", "host");
+  return join4(root, "local", "host");
 }
 var pairedDeviceSchema = external_exports.object({
   deviceId: external_exports.string().min(1).max(64),
@@ -38368,27 +33826,14 @@ var pairedDeviceSchema = external_exports.object({
   name: external_exports.string().min(1).max(80),
   platform: external_exports.string().min(1).max(40),
   pairingId: external_exports.string().uuid(),
-  pairedAt: external_exports.number().int().nonnegative()
+  pairedAt: external_exports.number().int().nonnegative(),
+  lastSeenAt: external_exports.number().int().nonnegative().optional()
 }).strict();
 var pairedDevicesSchema = external_exports.object({
   schemaVersion: external_exports.literal(1),
   devices: external_exports.array(pairedDeviceSchema).max(256)
 }).strict();
-var pairingWindowSchema = external_exports.object({
-  schemaVersion: external_exports.literal(1),
-  code: external_exports.string().min(1).max(64),
-  expiresAt: external_exports.number().int().nonnegative(),
-  failures: external_exports.number().int().nonnegative()
-}).strict();
-var listenerSchema = external_exports.object({
-  schemaVersion: external_exports.literal(1),
-  hostDeviceId: external_exports.string().min(1),
-  hostIdentityKey: external_exports.string().min(1),
-  name: external_exports.string().min(1).max(80),
-  addresses: external_exports.array(external_exports.string().min(1).max(64)).max(16),
-  startedAt: external_exports.number().int().nonnegative(),
-  pid: external_exports.number().int().nonnegative()
-}).strict();
+var RETIRED_FILES = ["pairing-window.json", "listener.json"];
 var LocalPairingStore = class {
   constructor(root, now = Date.now) {
     this.now = now;
@@ -38402,10 +33847,11 @@ var LocalPairingStore = class {
   queue = Promise.resolve();
   async loadIdentity(deviceName) {
     const identity2 = await this.identities.loadOrCreate(deviceName.slice(0, 80));
+    await Promise.all(RETIRED_FILES.map((file2) => rm2(join4(this.directory, file2), { force: true }).catch(() => void 0)));
     await this.reload();
     return identity2;
   }
-  /** Re-read paired devices if another process changed them. */
+  /** Re-read paired devices if the file changed on disk. */
   async reload() {
     const path = this.devicesPath();
     let stamp = "missing";
@@ -38416,17 +33862,17 @@ var LocalPairingStore = class {
       if (!isMissing(error62)) throw error62;
     }
     if (stamp === this.devicesStamp) return false;
-    const devices2 = /* @__PURE__ */ new Map();
+    const devices = /* @__PURE__ */ new Map();
     if (stamp !== "missing") {
       const parsed = pairedDevicesSchema.parse(JSON.parse(await readFile3(path, "utf8")));
       for (const device of parsed.devices) {
         if (device.fingerprint !== fingerprint(device.publicKey)) {
           throw new Error(`paired device ${device.deviceId} has an invalid fingerprint`);
         }
-        devices2.set(device.deviceId, device);
+        devices.set(device.deviceId, device);
       }
     }
-    this.devices = devices2;
+    this.devices = devices;
     this.devicesStamp = stamp;
     return true;
   }
@@ -38442,39 +33888,6 @@ var LocalPairingStore = class {
   }
   listPairedDevices() {
     return [...this.devices.values()].map((device) => ({ ...device }));
-  }
-  /** Open (or replace) the pairing window with a fresh one-time code. */
-  openWindow(windowMs = LOCAL_PAIRING_WINDOW_MS) {
-    return this.serialize(async () => {
-      const window = { code: generateLocalPairingCode(), expiresAt: this.now() + windowMs };
-      await atomicJsonWrite2(this.windowPath(), { schemaVersion: 1, ...window, failures: 0 });
-      return window;
-    });
-  }
-  closeWindow() {
-    return this.serialize(() => rm2(this.windowPath(), { force: true }));
-  }
-  async activeWindow() {
-    const window = await this.readWindow();
-    return window === void 0 ? void 0 : { code: window.code, expiresAt: window.expiresAt };
-  }
-  /**
-   * Check a pairing proof against the open window. A correct proof consumes the
-   * window; wrong proofs count toward a limit that closes it.
-   */
-  verifyProof(handshakeHash, proof) {
-    return this.serialize(async () => {
-      const window = await this.readWindow();
-      if (window === void 0) return { ok: false, reason: "closed" };
-      if (verifyLocalPairingProof(window.code, handshakeHash, proof)) {
-        await rm2(this.windowPath(), { force: true });
-        return { ok: true };
-      }
-      const failures = window.failures + 1;
-      if (failures >= LOCAL_PAIRING_MAX_FAILURES) await rm2(this.windowPath(), { force: true });
-      else await atomicJsonWrite2(this.windowPath(), { ...window, failures });
-      return { ok: false, reason: "rejected" };
-    });
   }
   pair(input3) {
     return this.serialize(async () => {
@@ -38501,35 +33914,29 @@ var LocalPairingStore = class {
       return true;
     });
   }
-  async writeListener(record3) {
-    await atomicJsonWrite2(this.listenerPath(), { schemaVersion: 1, ...record3 });
+  rename(deviceId, name2) {
+    return this.serialize(async () => {
+      await this.reload();
+      const device = this.devices.get(deviceId);
+      const trimmed = name2.trim().slice(0, 80);
+      if (device === void 0 || trimmed === "") return false;
+      this.devices.set(deviceId, { ...device, name: trimmed });
+      await this.saveDevices();
+      return true;
+    });
   }
-  async clearListener(pid) {
-    const current = await this.readListener();
-    if (current?.pid === pid) await rm2(this.listenerPath(), { force: true });
+  /** Record a successful connection; best effort, never blocks trust. */
+  touch(deviceId) {
+    return this.serialize(async () => {
+      const device = this.devices.get(deviceId);
+      if (device === void 0) return;
+      this.devices.set(deviceId, { ...device, lastSeenAt: this.now() });
+      await this.saveDevices();
+    });
   }
-  async readListener() {
-    try {
-      return listenerSchema.parse(JSON.parse(await readFile3(this.listenerPath(), "utf8")));
-    } catch (error62) {
-      if (isMissing(error62)) return void 0;
-      throw error62;
-    }
-  }
-  async readWindow() {
-    let window;
-    try {
-      window = pairingWindowSchema.parse(JSON.parse(await readFile3(this.windowPath(), "utf8")));
-    } catch (error62) {
-      if (isMissing(error62)) return void 0;
-      await rm2(this.windowPath(), { force: true });
-      return void 0;
-    }
-    if (window.expiresAt <= this.now() || window.failures >= LOCAL_PAIRING_MAX_FAILURES) {
-      await rm2(this.windowPath(), { force: true });
-      return void 0;
-    }
-    return window;
+  /** Resolves once every queued write has landed. */
+  async flush() {
+    await this.queue;
   }
   async saveDevices() {
     await atomicJsonWrite2(this.devicesPath(), { schemaVersion: 1, devices: [...this.devices.values()] });
@@ -38542,17 +33949,11 @@ var LocalPairingStore = class {
     return run;
   }
   devicesPath() {
-    return join5(this.directory, "paired-devices.json");
-  }
-  windowPath() {
-    return join5(this.directory, "pairing-window.json");
-  }
-  listenerPath() {
-    return join5(this.directory, "listener.json");
+    return join4(this.directory, "paired-devices.json");
   }
 };
 async function atomicJsonWrite2(path, value) {
-  await mkdir3(join5(path, ".."), { recursive: true, mode: 448 });
+  await mkdir3(join4(path, ".."), { recursive: true, mode: 448 });
   const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
   await writeFile2(temporary, `${JSON.stringify(value, null, 2)}
 `, { mode: 384 });
@@ -38564,6 +33965,7 @@ function isMissing(error62) {
 }
 
 // src/local-host.ts
+var RTT_PROBE_TIMEOUT_MS = 3e3;
 var ADMISSION_WINDOW_MS = 6e4;
 var ADMISSIONS_PER_WINDOW = 20;
 var CLOSE_NORMAL = 1e3;
@@ -38623,14 +34025,6 @@ var LocalDirectHost = class {
     }
     this.heartbeat = setInterval(() => this.ping(), LOCAL_HEARTBEAT_INTERVAL_MS);
     this.heartbeat.unref?.();
-    await this.options.pairing.writeListener({
-      hostDeviceId: this.options.identity.deviceId,
-      hostIdentityKey: this.options.identity.publicKey,
-      name: this.options.identity.name,
-      addresses: bound,
-      startedAt: this.now(),
-      pid: process.pid
-    });
     this.options.logger.info("local direct listening", { addresses: bound });
   }
   async stop() {
@@ -38644,7 +34038,6 @@ var LocalDirectHost = class {
     this.sockets.clear();
     await Promise.all(this.servers.splice(0).map((server) => new Promise((resolve3) => server.close(() => resolve3()))));
     this.addresses = [];
-    await this.options.pairing.clearListener(process.pid).catch(() => void 0);
   }
   status() {
     return {
@@ -38739,10 +34132,40 @@ var LocalDirectHost = class {
         if (proofFrame.text) throw new LocalRejection("INVALID_MESSAGE", "Pairing proof must be encrypted.");
         const prove = decodeLocalPairFrame(noise.decrypt(proofFrame.data));
         if (prove.type !== "local.pair.prove") throw new LocalRejection("INVALID_MESSAGE", "Expected a pairing proof.");
-        const result = await this.options.pairing.verifyProof(noise.handshakeHash(), prove.payload.proof);
+        const handshakeHash = noise.handshakeHash();
+        const result = this.options.gate.verifyProof(handshakeHash, prove.payload.proof);
         if (!result.ok) {
           this.options.logger.warn("local direct pairing rejected", { reason: result.reason });
           throw new LocalRejection(result.reason === "closed" ? "PAIRING_CLOSED" : "PAIRING_REJECTED", "Pairing was not accepted.");
+        }
+        clearTimeout(timer);
+        const withdrawn = new AbortController();
+        const onGone = () => withdrawn.abort();
+        ws.once("close", onGone);
+        let decision;
+        try {
+          const approval = this.options.gate.requestApproval({
+            deviceId: hello.clientDeviceId,
+            name: hello.name,
+            platform: hello.platform,
+            fingerprint: fingerprint(hello.clientIdentityKey),
+            address: shortRemote(normalizeRemote(remote)),
+            confirmationCode: localPairingConfirmationCode(handshakeHash)
+          }, withdrawn.signal);
+          const timeoutMs = this.options.gate.current()?.request?.expiresAt;
+          ws.send(noise.encrypt(encodeLocalPairFrame({
+            v: LOCAL_DIRECT_VERSION,
+            type: "local.pair.pending",
+            payload: { timeoutMs: timeoutMs === void 0 ? LOCAL_PAIRING_APPROVAL_MS : Math.max(1e3, timeoutMs - this.now()) }
+          })));
+          this.options.logger.info("local direct pairing awaits approval", { peerDeviceId: shortId2(hello.clientDeviceId) });
+          decision = await approval;
+        } finally {
+          ws.off("close", onGone);
+        }
+        if (decision !== "approved") {
+          this.options.logger.info("local direct pairing not approved", { decision });
+          throw new LocalRejection(...pairingRejection(decision));
         }
         device = await this.options.pairing.pair({
           deviceId: hello.clientDeviceId,
@@ -38765,9 +34188,14 @@ var LocalDirectHost = class {
       }
       clearTimeout(timer);
       inbox.detach();
-      const channel = new LocalNoiseChannel(ws, noise, connectionId, device, inbox.drain());
+      const channel = new LocalNoiseChannel(ws, noise, connectionId, device, inbox.drain(), {
+        remoteAddress: shortRemote(normalizeRemote(remote)),
+        connectedAt: this.now(),
+        latency: latencyOf(ws)
+      });
       noise = void 0;
       await this.options.accept(channel);
+      void channel.measureRtt();
     } catch (error62) {
       clearTimeout(timer);
       noise?.destroy();
@@ -38791,35 +34219,103 @@ var LocalDirectHost = class {
       return ["PEER_IDENTITY_MISMATCH", "This device id is already used by an account connection."];
     }
     if (hello.intent === "pair") {
-      return await this.options.pairing.activeWindow() === void 0 ? ["PAIRING_CLOSED", "Open pairing on the Host first."] : void 0;
+      if (!hello.capabilities.includes(LOCAL_PAIR_APPROVAL_CAPABILITY)) {
+        return ["UNSUPPORTED_VERSION", "Update the app to pair: this Host asks for approval on the computer."];
+      }
+      return this.options.gate.accepting() ? void 0 : ["PAIRING_CLOSED", "Open pairing on the Host first."];
     }
     const device = this.options.pairing.pairedDevice(hello.clientDeviceId);
     if (device === void 0) return ["PEER_NOT_PAIRED", "Pair this device with the Host first."];
     if (device.publicKey !== hello.clientIdentityKey) return ["PEER_IDENTITY_MISMATCH", "This device presented a different identity."];
     return void 0;
   }
+  /** Heartbeat: a socket that missed the previous pong is gone; every pong also samples latency. */
   ping() {
     for (const socket of this.sockets) {
-      const state = socket;
-      if (state.dshAlive === false) {
+      const latency = latencyOf(socket);
+      if (!latency.alive) {
         socket.terminate();
         continue;
       }
-      state.dshAlive = false;
-      socket.ping();
-      if (!("dshPongBound" in state)) {
-        Object.defineProperty(state, "dshPongBound", { value: true });
-        socket.on("pong", () => {
-          state.dshAlive = true;
-        });
-      }
+      latency.alive = false;
+      void latency.probe(LOCAL_HEARTBEAT_INTERVAL_MS);
     }
   }
 };
+var SocketLatency = class {
+  constructor(ws) {
+    this.ws = ws;
+    ws.on("pong", (data2) => this.onPong(rawBytes(data2)));
+    ws.on("close", () => {
+      for (const entry of this.waiting.values()) {
+        clearTimeout(entry.timer);
+        entry.resolve(void 0);
+      }
+      this.waiting.clear();
+    });
+  }
+  alive = true;
+  rttMs;
+  measuredAt;
+  sequence = 0;
+  waiting = /* @__PURE__ */ new Map();
+  probe(timeoutMs = RTT_PROBE_TIMEOUT_MS) {
+    if (this.ws.readyState !== this.ws.OPEN) return Promise.resolve(void 0);
+    this.sequence = (this.sequence + 1) % 1e6;
+    const id3 = String(this.sequence);
+    return new Promise((resolve3) => {
+      const timer = setTimeout(() => {
+        this.waiting.delete(id3);
+        resolve3(void 0);
+      }, timeoutMs);
+      timer.unref?.();
+      this.waiting.set(id3, { sentAt: performance.now(), resolve: resolve3, timer });
+      try {
+        this.ws.ping(Buffer.from(id3));
+      } catch {
+        clearTimeout(timer);
+        this.waiting.delete(id3);
+        resolve3(void 0);
+      }
+    });
+  }
+  onPong(data2) {
+    this.alive = true;
+    const id3 = Buffer.from(data2).toString("utf8");
+    const entry = this.waiting.get(id3);
+    if (entry === void 0) return;
+    this.waiting.delete(id3);
+    clearTimeout(entry.timer);
+    const rtt = Math.max(0, Math.round((performance.now() - entry.sentAt) * 10) / 10);
+    this.rttMs = rtt;
+    this.measuredAt = Date.now();
+    entry.resolve(rtt);
+  }
+};
+var latencies = /* @__PURE__ */ new WeakMap();
+function latencyOf(ws) {
+  let latency = latencies.get(ws);
+  if (latency === void 0) {
+    latency = new SocketLatency(ws);
+    latencies.set(ws, latency);
+  }
+  return latency;
+}
+function pairingRejection(decision) {
+  switch (decision) {
+    case "denied":
+      return ["PAIRING_DENIED", "Pairing was declined on the computer."];
+    case "expired":
+      return ["PAIRING_EXPIRED", "Pairing was not approved in time."];
+    case "closed":
+      return ["PAIRING_CLOSED", "Pairing was closed on the computer."];
+  }
+}
 var LocalNoiseChannel = class {
-  constructor(ws, noise, connectionId, device, queued) {
+  constructor(ws, noise, connectionId, device, queued, link) {
     this.ws = ws;
     this.noise = noise;
+    this.link = link;
     this.security = {
       protocol: "Noise_IK_25519_ChaChaPoly_SHA256",
       connectionId,
@@ -38842,6 +34338,7 @@ var LocalNoiseChannel = class {
   mode = "LAN";
   trustScope = "local";
   handlers = /* @__PURE__ */ new Set();
+  closeHandlers = /* @__PURE__ */ new Set();
   incoming = new SecureMessageCodec();
   outgoing = new SecureMessageCodec();
   sends = new SerialSend();
@@ -38849,6 +34346,18 @@ var LocalNoiseChannel = class {
   closed = false;
   /** Messages that arrive before the controller subscribes are held, not dropped. */
   early = [];
+  get remoteAddress() {
+    return this.link.remoteAddress;
+  }
+  get connectedAt() {
+    return this.link.connectedAt;
+  }
+  get rttMs() {
+    return this.link.latency.rttMs;
+  }
+  measureRtt() {
+    return this.closed ? Promise.resolve(void 0) : this.link.latency.probe();
+  }
   send(message) {
     const run = this.sendTail.then(() => this.sendNow(message));
     this.sendTail = run.catch(() => void 0);
@@ -38870,6 +34379,16 @@ var LocalNoiseChannel = class {
       await this.close().catch(() => void 0);
       throw error62;
     }
+  }
+  onClose(handler) {
+    if (this.closed) {
+      queueMicrotask(handler);
+      return () => void 0;
+    }
+    this.closeHandlers.add(handler);
+    return () => {
+      this.closeHandlers.delete(handler);
+    };
   }
   onMessage(handler) {
     this.handlers.add(handler);
@@ -38899,6 +34418,9 @@ var LocalNoiseChannel = class {
     if (this.closed) return;
     this.closed = true;
     this.handlers.clear();
+    const closeHandlers = [...this.closeHandlers];
+    this.closeHandlers.clear();
+    for (const handler of closeHandlers) handler();
     this.early = void 0;
     this.incoming.reset();
     this.outgoing.reset();
@@ -39027,8 +34549,189 @@ function shortRemote(value) {
   return value.replace(/^::ffff:/u, "");
 }
 
+// src/preferences.ts
+import { chmod as chmod3, mkdir as mkdir4, readFile as readFile4, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
+import { join as join5 } from "node:path";
+var preferencesSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  /** Show the Lango entry in the sidebar footer. Off by default. */
+  sidebarEntry: external_exports.boolean()
+}).strict();
+var DEFAULTS = { sidebarEntry: false };
+var PreferencesStore = class {
+  constructor(directory) {
+    this.directory = directory;
+  }
+  current = { ...DEFAULTS };
+  queue = Promise.resolve();
+  async load() {
+    try {
+      const parsed = preferencesSchema.parse(JSON.parse(await readFile4(this.path(), "utf8")));
+      this.current = { sidebarEntry: parsed.sidebarEntry };
+    } catch {
+      this.current = { ...DEFAULTS };
+    }
+    return this.get();
+  }
+  get() {
+    return { ...this.current };
+  }
+  update(patch) {
+    const run = this.queue.then(async () => {
+      this.current = { ...this.current, ...patch };
+      await mkdir4(this.directory, { recursive: true, mode: 448 });
+      const temporary = `${this.path()}.${process.pid}.${Date.now()}.tmp`;
+      await writeFile3(temporary, `${JSON.stringify({ schemaVersion: 1, ...this.current }, null, 2)}
+`, { mode: 384 });
+      await chmod3(temporary, 384).catch(() => void 0);
+      await rename3(temporary, this.path());
+      return this.get();
+    });
+    this.queue = run.catch(() => void 0);
+    return run;
+  }
+  async flush() {
+    await this.queue;
+  }
+  path() {
+    return join5(this.directory, "preferences.json");
+  }
+};
+
+// src/pairing-gate.ts
+var PairingGate = class {
+  window;
+  listeners = /* @__PURE__ */ new Set();
+  now;
+  windowMs;
+  approvalMs;
+  constructor(options = {}) {
+    this.now = options.now ?? Date.now;
+    this.windowMs = options.windowMs ?? LOCAL_PAIRING_WINDOW_MS;
+    this.approvalMs = options.approvalMs ?? LOCAL_PAIRING_APPROVAL_MS;
+  }
+  /** Open a fresh window, replacing (and cancelling) any current one. */
+  open() {
+    this.end("closed", false);
+    const window = {
+      code: generateLocalPairingCode(),
+      expiresAt: this.now() + this.windowMs,
+      failures: 0,
+      claimed: false
+    };
+    window.timer = setTimeout(() => this.expire(window), this.windowMs);
+    window.timer.unref?.();
+    this.window = window;
+    this.emit();
+    return this.view(window);
+  }
+  close() {
+    this.end("closed");
+  }
+  /** The open window, or undefined once it expired or ended. */
+  current() {
+    const window = this.live();
+    return window === void 0 ? void 0 : this.view(window);
+  }
+  /** Whether a new pairing connection may start (open and not yet claimed). */
+  accepting() {
+    const window = this.live();
+    return window !== void 0 && !window.claimed;
+  }
+  verifyProof(handshakeHash, proof) {
+    const window = this.live();
+    if (window === void 0 || window.claimed) return { ok: false, reason: "closed" };
+    if (verifyLocalPairingProof(window.code, handshakeHash, proof)) {
+      window.claimed = true;
+      return { ok: true };
+    }
+    window.failures += 1;
+    if (window.failures >= LOCAL_PAIRING_MAX_FAILURES) this.end("closed");
+    return { ok: false, reason: "rejected" };
+  }
+  /**
+   * Hold the claimed window until the computer decides. `signal` aborts when
+   * the phone goes away, which withdraws the request.
+   */
+  requestApproval(input3, signal) {
+    const window = this.live();
+    if (window === void 0 || !window.claimed || window.request !== void 0) return Promise.resolve("closed");
+    const requestedAt = this.now();
+    const request = { ...input3, id: uuidV7(requestedAt), requestedAt, expiresAt: requestedAt + this.approvalMs };
+    return new Promise((resolve3) => {
+      window.request = request;
+      window.settle = resolve3;
+      if (window.timer !== void 0) clearTimeout(window.timer);
+      window.timer = setTimeout(() => this.end("expired"), this.approvalMs);
+      window.timer.unref?.();
+      if (signal !== void 0) {
+        if (signal.aborted) {
+          this.end("closed");
+          return;
+        }
+        signal.addEventListener("abort", () => {
+          if (this.window === window) this.end("closed");
+        }, { once: true });
+      }
+      this.emit();
+    });
+  }
+  /** The computer's answer; false when the request is no longer pending. */
+  decide(requestId, approve) {
+    const window = this.live();
+    if (window?.request?.id !== requestId) return false;
+    this.end(approve ? "approved" : "denied");
+    return true;
+  }
+  onChange(listener) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+  dispose() {
+    this.end("closed", false);
+    this.listeners.clear();
+  }
+  live() {
+    const window = this.window;
+    if (window === void 0) return void 0;
+    if (window.request === void 0 && window.expiresAt <= this.now()) {
+      this.end("expired");
+      return void 0;
+    }
+    return window;
+  }
+  expire(window) {
+    if (this.window === window && window.request === void 0) this.end("expired");
+  }
+  end(decision, notify = true) {
+    const window = this.window;
+    if (window === void 0) return;
+    this.window = void 0;
+    if (window.timer !== void 0) clearTimeout(window.timer);
+    window.settle?.(decision);
+    if (notify) this.emit();
+  }
+  view(window) {
+    return {
+      code: window.code,
+      expiresAt: window.expiresAt,
+      ...window.request === void 0 ? {} : { request: { ...window.request } }
+    };
+  }
+  emit() {
+    for (const listener of this.listeners) {
+      try {
+        listener();
+      } catch {
+      }
+    }
+  }
+};
+
 // src/version.ts
-var LANGO_VERSION = "0.1.0";
+var LANGO_VERSION = "0.2.0";
 
 // src/runtime.ts
 var TRUST_POLL_MS = 3e3;
@@ -39044,13 +34747,24 @@ var GuardedTrust = class {
     return this.store.hasDevice(deviceId);
   }
 };
+var LangoControlError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
 var LangoRuntime = class {
-  constructor(config2, root, gateway, logger, harnessVersion) {
+  constructor(config2, root, gateway, logger, harnessVersion, options = {}) {
     this.config = config2;
     this.gateway = gateway;
     this.logger = logger;
     this.harnessVersion = harnessVersion;
-    this.pairing = new LocalPairingStore(root);
+    const now = options.now ?? Date.now;
+    this.pairable = options.pairableAddresses ?? pairableAddresses;
+    this.pairing = new LocalPairingStore(root, now);
+    this.preferences = new PreferencesStore(this.pairing.directory);
+    this.gate = new PairingGate({ now, ...options.approvalMs === void 0 ? {} : { approvalMs: options.approvalMs } });
+    this.gate.onChange(() => this.emit());
     this.trust = new GuardedTrust(this.pairing);
     this.connections = new ConnectionController(this.trust, (context, send) => {
       const peerGateway = this.gateway.createPeer?.() ?? this.gateway;
@@ -39065,24 +34779,39 @@ var LangoRuntime = class {
       ) : void 0;
       return new RpcRouter(bridge, () => this.capabilities(), this.logger);
     }, this.logger);
+    this.connections.onChange(() => this.emit());
   }
+  gate;
   pairing;
+  preferences;
   trust;
   connections;
   terminalOwners = /* @__PURE__ */ new Map();
+  listeners = /* @__PURE__ */ new Set();
+  identity;
   host;
   trustTimer;
   closed = false;
+  pairable;
   async start() {
     if (this.closed) throw new Error("lango runtime is closed");
     const identity2 = await this.pairing.loadIdentity(this.config.deviceName);
+    this.identity = identity2;
+    await this.preferences.load();
     this.logger.info("lango host identity ready", { fingerprint: identity2.fingerprint });
     const host = new LocalDirectHost({
       config: this.config.local,
       identity: identity2,
       pairing: this.pairing,
+      gate: this.gate,
       logger: this.logger,
-      accept: (channel) => this.connections.accept(channel),
+      accept: async (channel) => {
+        await this.connections.accept(channel);
+        void this.pairing.touch(channel.peerDeviceId).catch(() => void 0);
+        channel.onClose?.(() => {
+          void this.pairing.touch(channel.peerDeviceId).then(() => this.emit(), () => void 0);
+        });
+      },
       conflictsWithAccount: () => false,
       hostVersion: LANGO_VERSION
     });
@@ -39092,6 +34821,7 @@ var LangoRuntime = class {
       void this.refreshTrust();
     }, TRUST_POLL_MS);
     this.trustTimer.unref?.();
+    this.emit();
   }
   status() {
     return {
@@ -39102,13 +34832,127 @@ var LangoRuntime = class {
       carrier: this.gateway.supportsCarrier
     };
   }
+  /** Snapshot for the Desktop panel. The pairing link appears only while a window is open. */
+  state() {
+    const status = this.host?.status() ?? { listening: false, addresses: [] };
+    const pairable = this.pairable(status.addresses);
+    const window = this.gate.current();
+    const peers = new Map(this.connections.connectedPeers().map((peer) => [peer.deviceId, peer]));
+    const devices = this.pairing.listPairedDevices().map((device) => {
+      const peer = peers.get(device.deviceId);
+      return {
+        deviceId: device.deviceId,
+        name: device.name,
+        platform: device.platform,
+        fingerprint: device.fingerprint,
+        pairedAt: device.pairedAt,
+        ...device.lastSeenAt === void 0 ? {} : { lastSeenAt: device.lastSeenAt },
+        online: peer !== void 0,
+        ...peer?.address === void 0 ? {} : { address: peer.address },
+        ...peer?.connectedAt === void 0 ? {} : { connectedAt: peer.connectedAt },
+        ...peer?.rttMs === void 0 ? {} : { rttMs: peer.rttMs }
+      };
+    }).sort((left, right) => Number(right.online) - Number(left.online) || (right.lastSeenAt ?? right.pairedAt) - (left.lastSeenAt ?? left.pairedAt));
+    const identity2 = this.identity;
+    return {
+      host: {
+        name: identity2?.name ?? this.config.deviceName,
+        fingerprint: identity2?.fingerprint ?? "",
+        listening: status.listening,
+        addresses: status.addresses,
+        pairable,
+        ...status.error === void 0 ? {} : { error: status.error },
+        terminal: this.config.terminal,
+        carrier: this.gateway.supportsCarrier,
+        ...this.harnessVersion === void 0 ? {} : { harnessVersion: this.harnessVersion }
+      },
+      ...window === void 0 || identity2 === void 0 || pairable.length === 0 ? {} : {
+        pairing: {
+          link: formatLocalPairingLink({
+            hostDeviceId: identity2.deviceId,
+            hostIdentityKey: identity2.publicKey,
+            addresses: pairable,
+            pairingCode: window.code,
+            name: identity2.name
+          }),
+          expiresAt: window.expiresAt,
+          ...window.request === void 0 ? {} : { request: window.request }
+        }
+      },
+      devices,
+      preferences: this.preferences.get()
+    };
+  }
+  async setPreferences(patch) {
+    await this.preferences.update(patch);
+    this.emit();
+    return this.state();
+  }
+  openPairing() {
+    const status = this.host?.status();
+    if (this.closed || this.identity === void 0 || status?.listening !== true) {
+      throw new LangoControlError("NOT_LISTENING", "lango is not listening on any private address.");
+    }
+    if (this.pairable(status.addresses).length === 0) {
+      throw new LangoControlError("NO_ADDRESS", "No private address a phone can reach.");
+    }
+    this.gate.open();
+    this.logger.info("lango pairing window opened");
+    return this.state();
+  }
+  closePairing() {
+    this.gate.close();
+    return this.state();
+  }
+  decidePairing(requestId, approve) {
+    if (!this.gate.decide(requestId, approve)) {
+      throw new LangoControlError("REQUEST_GONE", "The pairing request is no longer waiting.");
+    }
+    this.logger.info("lango pairing decided", { approve });
+    return this.state();
+  }
+  async revokeDevice(deviceId) {
+    if (!await this.pairing.revoke(deviceId)) throw new LangoControlError("DEVICE_NOT_FOUND", "No paired device has that id.");
+    await this.connections.revokeUntrustedLocal();
+    this.logger.info("lango device revoked");
+    this.emit();
+    return this.state();
+  }
+  async renameDevice(deviceId, name2) {
+    if (!await this.pairing.rename(deviceId, name2)) throw new LangoControlError("DEVICE_NOT_FOUND", "No paired device has that id.");
+    this.emit();
+    return this.state();
+  }
+  async measureDevice(deviceId) {
+    const rttMs = await this.connections.measure(deviceId);
+    this.emit();
+    return { ...rttMs === void 0 ? {} : { rttMs }, state: this.state() };
+  }
+  onChange(listener) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
   async close() {
     if (this.closed) return;
     this.closed = true;
     if (this.trustTimer !== void 0) clearInterval(this.trustTimer);
+    this.gate.dispose();
     await this.host?.stop();
     await this.connections.close();
+    await this.pairing.flush();
+    await this.preferences.flush();
+    this.listeners.clear();
     this.logger.info("lango host stopped");
+  }
+  emit() {
+    for (const listener of this.listeners) {
+      try {
+        listener();
+      } catch {
+      }
+    }
   }
   capabilities() {
     if (!this.gateway.supportsCarrier) return [];
@@ -39124,14 +34968,33 @@ var LangoRuntime = class {
       const changed = await this.pairing.reload();
       const recovered = !this.trust.available;
       this.trust.available = true;
-      if (changed || recovered) await this.connections.revokeUntrustedLocal();
+      if (changed || recovered) {
+        await this.connections.revokeUntrustedLocal();
+        this.emit();
+      }
     } catch (error62) {
       this.trust.available = false;
       await this.connections.revokeUntrustedLocal();
+      this.emit();
       this.logger.warn("lango pairings could not be read", { reason: error62 instanceof Error ? error62.message : "unknown" });
     }
   }
 };
+function pairableAddresses(addresses) {
+  const rank = (address) => {
+    let host;
+    try {
+      host = parseLocalAddress(address).host;
+    } catch {
+      return -1;
+    }
+    if (host.startsWith("127.") || host === "::1" || host.startsWith("169.254.") || host.startsWith("fe80:")) return -1;
+    if (host.startsWith("192.168.") || host.startsWith("10.") || /^172\.(1[6-9]|2\d|3[01])\./u.test(host)) return 0;
+    if (host.startsWith("100.")) return 1;
+    return 2;
+  };
+  return addresses.map((address) => ({ address, rank: rank(address) })).filter((entry) => entry.rank >= 0).sort((left, right) => left.rank - right.rank).slice(0, LOCAL_MAX_ADDRESSES).map((entry) => entry.address);
+}
 function harnessWorkspaceResolver(gateway, supportsSessions) {
   return async (sessionId, signal) => {
     signal.throwIfAborted();
@@ -39141,6 +35004,299 @@ function harnessWorkspaceResolver(gateway, supportsSessions) {
     const value = result.ok ? result.value : void 0;
     return value?.items?.find((item) => item.sessionId === sessionId)?.cwd;
   };
+}
+
+// src/control-contract.ts
+var CONTROL_RPC_PREFIX = "/dsh-lango";
+var EVENTS_ENDPOINT = "events";
+
+// src/control-route.ts
+var ENDPOINT_SEGMENT_PATTERN = /^[A-Za-z0-9_$.-]+$/;
+var MAX_BODY_BYTES = 16 * 1024;
+var KEEP_ALIVE_MS = 15e3;
+var PUSH_DEBOUNCE_MS = 80;
+var MAX_STREAMS = 16;
+var deviceSchema = external_exports.object({ deviceId: external_exports.string().min(1).max(64) }).strict();
+var renameSchema = external_exports.object({ deviceId: external_exports.string().min(1).max(64), name: external_exports.string().trim().min(1).max(80) }).strict();
+var decideSchema = external_exports.object({ requestId: external_exports.string().min(1).max(64), approve: external_exports.boolean() }).strict();
+var emptySchema = external_exports.object({}).strict();
+var preferencesSchema2 = external_exports.object({ sidebarEntry: external_exports.boolean().optional() }).strict();
+function createControlHandler(runtime) {
+  return async (endpoint, payload) => {
+    try {
+      switch (endpoint) {
+        case "state":
+          emptySchema.parse(payload ?? {});
+          return ok(runtime.state());
+        case "pairing.open":
+          emptySchema.parse(payload ?? {});
+          return ok(runtime.openPairing());
+        case "pairing.close":
+          emptySchema.parse(payload ?? {});
+          return ok(runtime.closePairing());
+        case "pairing.decide": {
+          const input3 = decideSchema.parse(payload);
+          return ok(runtime.decidePairing(input3.requestId, input3.approve));
+        }
+        case "device.revoke":
+          return ok(await runtime.revokeDevice(deviceSchema.parse(payload).deviceId));
+        case "device.rename": {
+          const input3 = renameSchema.parse(payload);
+          return ok(await runtime.renameDevice(input3.deviceId, input3.name));
+        }
+        case "preferences.set": {
+          const input3 = preferencesSchema2.parse(payload);
+          return ok(await runtime.setPreferences(input3.sidebarEntry === void 0 ? {} : { sidebarEntry: input3.sidebarEntry }));
+        }
+        case "device.measure":
+          return ok(await runtime.measureDevice(deviceSchema.parse(payload).deviceId));
+        default:
+          return failure2("NOT_FOUND", "Unknown lango control endpoint.");
+      }
+    } catch (error62) {
+      if (error62 instanceof LangoControlError) return failure2(error62.code, error62.message);
+      if (error62 instanceof external_exports.ZodError) return failure2("BAD_REQUEST", "The request is invalid.");
+      return failure2("FAILED", "The lango request failed.");
+    }
+  };
+}
+var StateStream = class {
+  constructor(runtime) {
+    this.runtime = runtime;
+    this.unsubscribe = runtime.onChange(() => this.schedule());
+  }
+  responses = /* @__PURE__ */ new Set();
+  timer;
+  keepAlive;
+  unsubscribe;
+  closed = false;
+  handle(res) {
+    if (this.closed || this.responses.size >= MAX_STREAMS) {
+      res.writeHead(503).end();
+      return;
+    }
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
+    res.write("retry: 3000\n\n");
+    this.responses.add(res);
+    this.write(res, this.frame());
+    res.on("close", () => {
+      this.responses.delete(res);
+      if (this.responses.size === 0 && this.keepAlive !== void 0) {
+        clearInterval(this.keepAlive);
+        this.keepAlive = void 0;
+      }
+    });
+    if (this.keepAlive === void 0) {
+      this.keepAlive = setInterval(() => {
+        for (const response of this.responses) this.write(response, ": keep-alive\n\n");
+      }, KEEP_ALIVE_MS);
+      this.keepAlive.unref?.();
+    }
+  }
+  close() {
+    this.closed = true;
+    this.unsubscribe();
+    if (this.timer !== void 0) clearTimeout(this.timer);
+    if (this.keepAlive !== void 0) clearInterval(this.keepAlive);
+    for (const response of this.responses) response.end();
+    this.responses.clear();
+  }
+  schedule() {
+    if (this.closed || this.responses.size === 0 || this.timer !== void 0) return;
+    this.timer = setTimeout(() => {
+      this.timer = void 0;
+      const frame = this.frame();
+      for (const response of this.responses) this.write(response, frame);
+    }, PUSH_DEBOUNCE_MS);
+    this.timer.unref?.();
+  }
+  frame() {
+    return `data: ${JSON.stringify(this.runtime.state())}
+
+`;
+  }
+  write(res, text) {
+    try {
+      res.write(text);
+    } catch {
+      this.responses.delete(res);
+    }
+  }
+};
+function registerControlRoute(connection, webServer, runtime, logger) {
+  const handler = createControlHandler(runtime);
+  if (webServer !== void 0 && connection?.requestRejection !== void 0) {
+    const stream = new StateStream(runtime);
+    const dispose = webServer.register({
+      kind: "prefix",
+      path: CONTROL_RPC_PREFIX,
+      handler: (req, res) => handleControlRequest(connection, handler, stream, req, res)
+    });
+    return async () => {
+      stream.close();
+      await dispose();
+    };
+  }
+  const handle = connection?.rpc?.handle;
+  if (handle === void 0) {
+    logger.warn("lango control route is unavailable; the Desktop panel cannot reach this Host");
+    return async () => void 0;
+  }
+  return handle.call(connection.rpc, CONTROL_RPC_PREFIX, handler, { authority: "loopback" });
+}
+async function handleControlRequest(connection, handler, stream, req, res) {
+  const rejection = connection.requestRejection?.(req);
+  if (rejection !== void 0) {
+    writeText(res, rejection, rejection === 401 ? "unauthorized" : "forbidden");
+    return;
+  }
+  if (!isLoopback(req.socket.remoteAddress)) {
+    writeText(res, 403, "forbidden");
+    return;
+  }
+  const endpoint = endpointFromPath(new URL(req.url ?? "/", "http://dsh.internal").pathname);
+  if (req.method === "GET" && endpoint === EVENTS_ENDPOINT) {
+    stream.handle(res);
+    return;
+  }
+  if (req.method !== "POST" || endpoint === void 0) {
+    writeText(res, 404, "not found");
+    return;
+  }
+  if (contentType(req.headers) !== "application/json") {
+    writeText(res, 415, "content type must be application/json");
+    return;
+  }
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch {
+    writeText(res, 400, "body is not JSON");
+    return;
+  }
+  const message = clientRequest(body);
+  if (message === void 0 || message.method !== endpoint) {
+    writeJson(res, { type: "server-response", rpcId: rpcId(body), result: failure2("BAD_REQUEST", "invalid client-request message") });
+    return;
+  }
+  const abort = new AbortController();
+  req.on("close", () => {
+    if (!req.complete) abort.abort();
+  });
+  try {
+    writeJson(res, { type: "server-response", rpcId: message.rpcId, result: await handler(endpoint, message.payload, abort.signal) });
+  } catch {
+    writeText(res, 500, "handler failure");
+  }
+}
+function isLoopback(address) {
+  if (address === void 0) return false;
+  const lower = address.toLowerCase().replace(/^::ffff:/u, "");
+  return lower === "::1" || lower.startsWith("127.");
+}
+function endpointFromPath(pathname) {
+  if (!pathname.startsWith(`${CONTROL_RPC_PREFIX}/`)) return void 0;
+  const endpoint = pathname.slice(CONTROL_RPC_PREFIX.length + 1);
+  if (endpoint === "" || endpoint.includes("/") || !ENDPOINT_SEGMENT_PATTERN.test(endpoint) || endpoint === "." || endpoint === "..") return void 0;
+  return endpoint;
+}
+function contentType(headers) {
+  const raw = headers["content-type"];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value?.split(";", 1)[0]?.trim().toLowerCase();
+}
+async function readJsonBody(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.byteLength;
+    if (size > MAX_BODY_BYTES) throw new Error("body too large");
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+function clientRequest(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return void 0;
+  const record3 = value;
+  if (record3.type !== "client-request" || typeof record3.rpcId !== "string" || typeof record3.method !== "string") return void 0;
+  return { rpcId: record3.rpcId, method: record3.method, payload: record3.payload };
+}
+function rpcId(value) {
+  const id3 = typeof value === "object" && value !== null ? value.rpcId : void 0;
+  return typeof id3 === "string" ? id3 : "invalid-request";
+}
+function ok(value) {
+  return { ok: true, value };
+}
+function failure2(code, message) {
+  return { ok: false, error: { code, message, details: {} } };
+}
+function writeJson(res, body) {
+  res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+  res.end(JSON.stringify(body));
+}
+function writeText(res, status, body) {
+  res.writeHead(status);
+  res.end(body);
+}
+
+// src/logging.ts
+var levels = ["debug", "info", "warn", "error"];
+var secretKey = /authorization|cookie|token|secret|private|shared|ciphertext|payload|prompt|source|workspace|output|registrationCode|deviceCode/i;
+var SafeLogger = class {
+  constructor(sink, threshold = "info") {
+    this.sink = sink;
+    this.threshold = threshold;
+  }
+  debug(message, fields) {
+    this.write("debug", message, fields);
+  }
+  info(message, fields) {
+    this.write("info", message, fields);
+  }
+  warn(message, fields) {
+    this.write("warn", message, fields);
+  }
+  error(message, fields) {
+    this.write("error", message, fields);
+  }
+  write(level, message, fields) {
+    if (levels.indexOf(level) < levels.indexOf(this.threshold)) return;
+    const safeFields = fields === void 0 ? "" : ` ${JSON.stringify(redact(fields))}`;
+    this.sink[level](`[dsh-remote] ${message}${safeFields}`);
+  }
+};
+function redact(value, key = "") {
+  if (secretKey.test(key)) return "[REDACTED]";
+  if (Array.isArray(value)) return value.map((item) => redact(item));
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, redact(child, childKey)]));
+}
+
+// src/owner-peer.ts
+function createOwnerPeerFactory(ctx, constructor, connection) {
+  return () => {
+    if (constructor !== void 0) {
+      try {
+        return new constructor(ctx, { principal: { kind: "owner" }, interactions: "answer" });
+      } catch {
+      }
+    }
+    const createPeer = connection?.createPeer;
+    if (typeof createPeer !== "function") return void 0;
+    try {
+      return createPeer.call(connection, { principal: { kind: "owner" }, interactions: "answer" });
+    } catch {
+      return void 0;
+    }
+  };
+}
+
+// src/paths.ts
+import { homedir as homedir3 } from "node:os";
+import { join as join6 } from "node:path";
+function langoRoot(env = process.env) {
+  return join6(env.DSH_HOME || join6(homedir3(), ".dsh"), "lango");
 }
 
 // src/typert-gateway-switch.ts
@@ -39381,131 +35537,6 @@ function normalizeTerminalEnvironment(endpoint, value) {
   return { ...value, maxBufferedBytes: 256 * 1024 };
 }
 
-// src/cli.ts
-var PAIR_POLL_MS = 1e3;
-var TERMINAL_QR_MARGIN = 4;
-async function runCli(args = process.argv.slice(2), dependencies = {}) {
-  const runtime = {
-    env: dependencies.env ?? process.env,
-    stdout: dependencies.stdout ?? process.stdout,
-    stderr: dependencies.stderr ?? process.stderr,
-    now: dependencies.now ?? Date.now,
-    wait: dependencies.wait ?? ((milliseconds) => new Promise((resolve3) => setTimeout(resolve3, milliseconds))),
-    renderQr: dependencies.renderQr ?? renderTerminalQr
-  };
-  const [action, ...rest] = args;
-  const store = new LocalPairingStore(langoRoot(runtime.env), runtime.now);
-  try {
-    if (action === "pair" && rest.length === 0) return await pair(store, runtime);
-    if (action === "devices" && rest.length === 0) return await devices(store, runtime);
-    if (action === "revoke" && rest.length === 1) return await revoke(store, rest[0], runtime);
-    if (action === void 0 || action === "help" || action === "--help" || action === "-h") {
-      runtime.stdout.write(helpText());
-      return action === void 0 ? 1 : 0;
-    }
-    runtime.stderr.write(helpText());
-    return 1;
-  } catch (error62) {
-    runtime.stderr.write(`${error62 instanceof Error ? error62.message : "The lango command failed."}
-`);
-    return 1;
-  }
-}
-async function devices(store, runtime) {
-  await store.reload();
-  const paired = store.listPairedDevices();
-  runtime.stdout.write(paired.length === 0 ? "No paired devices.\n" : paired.map((device) => `${device.deviceId}  ${device.name} (${device.platform})  ${device.fingerprint}  paired ${new Date(device.pairedAt).toISOString()}
-`).join(""));
-  return 0;
-}
-async function revoke(store, deviceId, runtime) {
-  const removed = await store.revoke(deviceId);
-  if (removed) runtime.stdout.write("Pairing removed. A running Host closes that device's connection within a few seconds.\n");
-  else runtime.stderr.write("No paired device has that id.\n");
-  return removed ? 0 : 1;
-}
-async function pair(store, runtime) {
-  const listener = await store.readListener();
-  if (listener === void 0 || !processAlive(listener.pid) || listener.addresses.length === 0) {
-    runtime.stderr.write("lango is not running. Install and enable the dsh-lango plugin, then restart DeepSeek Harness.\n");
-    return 1;
-  }
-  await store.reload();
-  const known = new Set(store.listPairedDevices().map((device) => `${device.deviceId}:${device.pairingId}`));
-  const window = await store.openWindow();
-  const link = formatLocalPairingLink({
-    hostDeviceId: listener.hostDeviceId,
-    hostIdentityKey: listener.hostIdentityKey,
-    addresses: listener.addresses.slice(0, 8),
-    pairingCode: window.code,
-    name: listener.name
-  });
-  runtime.stdout.write("Open this link on the phone (or scan the QR code) to pair it with this Host:\n\n");
-  runtime.stdout.write(`${(await runtime.renderQr(link)).trimEnd()}
-
-${link}
-
-`);
-  runtime.stdout.write(`Host: ${listener.name}  fingerprint ${fingerprint(listener.hostIdentityKey)}
-`);
-  runtime.stdout.write(`Addresses: ${listener.addresses.join(", ")}
-`);
-  runtime.stdout.write(`The code is valid once and expires at ${new Date(window.expiresAt).toLocaleTimeString()}. Waiting for a device...
-`);
-  while (runtime.now() < window.expiresAt) {
-    await runtime.wait(PAIR_POLL_MS);
-    if ((await store.activeWindow())?.code === window.code) continue;
-    await store.reload();
-    const paired = store.listPairedDevices().find((device) => !known.has(`${device.deviceId}:${device.pairingId}`));
-    if (paired !== void 0) {
-      runtime.stdout.write(`Paired ${paired.name} (${paired.platform}), fingerprint ${paired.fingerprint}.
-`);
-      return 0;
-    }
-    runtime.stderr.write("The pairing window was closed before a device paired.\n");
-    return 1;
-  }
-  await store.closeWindow();
-  runtime.stderr.write("The pairing code expired. Run the command again for a new code.\n");
-  return 1;
-}
-function processAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error62) {
-    return error62.code === "EPERM";
-  }
-}
-async function renderTerminalQr(url2) {
-  const { default: QRCode } = await Promise.resolve().then(() => __toESM(require_lib(), 1));
-  const modules = QRCode.create(url2, { errorCorrectionLevel: "M" }).modules;
-  const width = modules.size + TERMINAL_QR_MARGIN * 2;
-  const quietLine = `\x1B[47m${" ".repeat(width * 2)}\x1B[0m`;
-  const lines = Array.from({ length: TERMINAL_QR_MARGIN }, () => quietLine);
-  for (let row = 0; row < modules.size; row += 1) {
-    let line = `\x1B[47m${" ".repeat(TERMINAL_QR_MARGIN * 2)}`;
-    for (let column = 0; column < modules.size; column += 1) {
-      line += modules.get(row, column) === 1 ? "\x1B[40m  " : "\x1B[47m  ";
-    }
-    line += `\x1B[47m${" ".repeat(TERMINAL_QR_MARGIN * 2)}\x1B[0m`;
-    lines.push(line);
-  }
-  lines.push(...Array.from({ length: TERMINAL_QR_MARGIN }, () => quietLine));
-  return lines.join("\n");
-}
-function helpText() {
-  return [
-    "Usage:",
-    "  lango pair               open a 5-minute pairing window and print the link",
-    "  lango devices            list paired devices",
-    "  lango revoke <device-id> remove a pairing",
-    "",
-    "The commands talk to the running DeepSeek Harness through <DSH_HOME>/lango.",
-    ""
-  ].join("\n");
-}
-
 // src/index.ts
 var name = "dsh-lango";
 function apply(ctx, entry = void 0) {
@@ -39538,6 +35569,7 @@ async function activate(ctx, input3) {
   const harnessVersion = await readHarnessDistributionVersion();
   if (harnessVersion === void 0) logger.warn("Harness version is unavailable");
   const runtime = new LangoRuntime(config2, langoRoot(), gateway, logger, harnessVersion);
+  const webServer = ctx.get("webServer", false);
   await ctx.effect(async () => {
     try {
       await runtime.start();
@@ -39545,7 +35577,11 @@ async function activate(ctx, input3) {
       await runtime.close();
       throw error62;
     }
-    return () => runtime.close();
+    const disposeControl = registerControlRoute(connection, webServer, runtime, logger);
+    return async () => {
+      await disposeControl();
+      await runtime.close();
+    };
   }, "dsh-lango lifecycle");
 }
 function readEntryConfig(entry) {
@@ -39554,6 +35590,5 @@ function readEntryConfig(entry) {
 }
 export {
   apply,
-  name,
-  runCli
+  name
 };

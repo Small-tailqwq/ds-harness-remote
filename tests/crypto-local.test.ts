@@ -8,6 +8,7 @@ import {
   fromBase64Url,
   generateKeyPair,
   generateLocalPairingCode,
+  localPairingConfirmationCode,
   toBase64Url,
   verifyLocalPairingProof,
 } from '../src/crypto/index.js'
@@ -82,6 +83,14 @@ describe('Local Direct crypto', () => {
     expect(accepted).toEqual([])
     expect(() => createLocalPairingProof('short', hash)).toThrow(TypeError)
     expect(fromBase64Url(generateLocalPairingCode()).byteLength).toBe(16)
+  })
+
+  it('derives the six-digit confirmation code both ends show', () => {
+    // Shared vector with dsh-Go: SHA-256(label || 32 zero bytes), first 4 bytes big-endian, mod 1e6.
+    expect(localPairingConfirmationCode(new Uint8Array(32))).toBe('505646')
+    const hash = new Uint8Array(32).fill(7)
+    expect(localPairingConfirmationCode(hash)).toMatch(/^\d{6}$/u)
+    expect(localPairingConfirmationCode(hash)).not.toBe(localPairingConfirmationCode(new Uint8Array(32).fill(8)))
   })
 })
 

@@ -23,6 +23,7 @@ const historyConfigureSchema = z.object({ compact: z.boolean() }).strict()
  */
 const apiMethods = new Set([
   'harness.transport.describe',
+  'harness.transport.ping',
   'remote.history.configure',
   'harness.remote.call',
   'harness.remote.transfer.open',
@@ -93,9 +94,15 @@ export class RpcRouter {
         const capabilities = [...new Set([
           ...this.capabilities(),
           'remote.history.compact.v1',
+          'harness.transport.ping.v1',
           ...(this.harnessRemote === undefined ? [] : ['harness.remote.stream.transfer.v1']),
         ])]
         return { capabilities }
+      }
+      case 'harness.transport.ping': {
+        // Latency probe: the cheapest round trip through the secure channel.
+        emptyParamsSchema.parse(params)
+        return {}
       }
       case 'remote.history.configure': {
         const { compact } = historyConfigureSchema.parse(params)

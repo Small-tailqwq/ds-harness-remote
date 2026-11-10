@@ -78,5 +78,6 @@ export {
   LOCAL_PAIRING_CODE_BYTES,
   createLocalPairingProof,
   generateLocalPairingCode,
+  localPairingConfirmationCode,
   verifyLocalPairingProof,
 } from './local.js'

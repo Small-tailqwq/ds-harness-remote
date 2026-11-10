@@ -7,11 +7,13 @@ import {
   createLocalPairingProof,
   fromBase64Url,
   generateKeyPair,
+  localPairingConfirmationCode,
   toBase64Url,
   type KeyPair,
 } from '../src/crypto/index.js'
 import {
   LOCAL_DIRECT_PATH,
+  LOCAL_PAIR_APPROVAL_CAPABILITY,
   LOCAL_PAIRING_MAX_FAILURES,
   createRpcRequest,
   createRpcResponse,
@@ -32,6 +34,7 @@ import { uuidV7 } from '../src/ids.js'
 import { LocalDirectHost, resolveBindHosts } from '../src/local-host.js'
 import { LocalPairingStore } from '../src/local-pairing.js'
 import { SafeLogger } from '../src/logging.js'
+import { PairingGate } from '../src/pairing-gate.js'
 import type { RpcRouter } from '../src/rpc-router.js'
 
 const logger = new SafeLogger({ debug() {}, info() {}, warn() {}, error() {} }, 'error')
@@ -40,6 +43,7 @@ interface Fixture {
   root: string
   clock: { now: number }
   pairing: LocalPairingStore
+  gate: PairingGate
   identity: HostIdentity
   controller: ConnectionController
   host: LocalDirectHost
@@ -53,6 +57,7 @@ async function createFixture(): Promise<Fixture> {
   const clock = { now: Date.now() }
   const pairing = new LocalPairingStore(root, () => clock.now)
   const identity = await pairing.loadIdentity('Test Host')
+  const gate = new PairingGate({ now: () => clock.now })
   const controller = new ConnectionController(
     pairing,
     (_context, send) => ({
@@ -66,23 +71,26 @@ async function createFixture(): Promise<Fixture> {
     config: { enabled: true, port: 0, bind: ['127.0.0.1'] },
     identity,
     pairing,
+    gate,
     logger,
     accept: channel => controller.accept(channel),
     conflictsWithAccount: () => false,
     now: () => clock.now,
   })
   await host.start()
-  return { root, clock, pairing, identity, controller, host, address: host.status().addresses[0]! }
+  return { root, clock, pairing, gate, identity, controller, host, address: host.status().addresses[0]! }
 }
 
 beforeEach(async () => { fixture = await createFixture() })
 afterEach(async () => {
+  fixture.gate.dispose()
   await fixture.host.stop()
   await fixture.controller.close()
   await rm(fixture.root, { recursive: true, force: true })
 })
 
 async function reset(): Promise<void> {
+  fixture.gate.dispose()
   await fixture.host.stop()
   await fixture.controller.close()
   await rm(fixture.root, { recursive: true, force: true })
@@ -127,6 +135,9 @@ async function connect(client: TestClient, options: {
   pairingCode?: string
   proof?: (hash: Uint8Array) => string
   identityKey?: string
+  /** What the person at the computer does once the phone proved the code. */
+  decision?: 'approve' | 'deny' | 'hang-up'
+  capabilities?: string[]
 }): Promise<ConnectResult> {
   const ws = new WebSocket(`ws://${fixture.address}${LOCAL_DIRECT_PATH}`)
   await new Promise<void>((resolve, reject) => { ws.once('open', () => resolve()); ws.once('error', reject) })
@@ -145,7 +156,7 @@ async function connect(client: TestClient, options: {
       clientIdentityKey: options.identityKey ?? client.keys.publicKey,
       name: 'Phone',
       platform: 'dsh-app-android',
-      capabilities: [],
+      capabilities: options.capabilities ?? (options.intent === 'pair' ? [LOCAL_PAIR_APPROVAL_CAPABILITY] : []),
       intent: options.intent,
     },
   }))
@@ -172,6 +183,20 @@ async function connect(client: TestClient, options: {
   if (options.intent === 'pair') {
     const proof = options.proof?.(noise.handshakeHash()) ?? createLocalPairingProof(options.pairingCode!, noise.handshakeHash())
     ws.send(noise.encrypt(encodeLocalPairFrame({ v: 1, type: 'local.pair.prove', payload: { proof } })))
+    const pendingFrame = await inbox.next()
+    if (pendingFrame === undefined || pendingFrame.text) return fail(pendingFrame)
+    const pending = decodeLocalPairFrame(noise.decrypt(pendingFrame.data))
+    expect(pending).toMatchObject({ type: 'local.pair.pending', payload: { timeoutMs: 120_000 } })
+    const request = fixture.gate.current()?.request
+    expect(request).toMatchObject({ deviceId: client.deviceId, name: 'Phone', platform: 'dsh-app-android', address: '127.0.0.1' })
+    // Both screens derive the same six digits from this handshake.
+    expect(request!.confirmationCode).toBe(localPairingConfirmationCode(noise.handshakeHash()))
+    const decision = options.decision ?? 'approve'
+    if (decision === 'hang-up') {
+      ws.terminate()
+      return { ok: false, code: 'HUNG_UP' }
+    }
+    fixture.gate.decide(request!.id, decision === 'approve')
     const okFrame = await inbox.next()
     if (okFrame === undefined || okFrame.text) return fail(okFrame)
     expect(decodeLocalPairFrame(noise.decrypt(okFrame.data)).type).toBe('local.pair.ok')
@@ -191,7 +216,7 @@ async function roundTrip(result: ConnectResult): Promise<unknown> {
 }
 
 async function pairNew(): Promise<{ client: TestClient; result: ConnectResult }> {
-  const window = await fixture.pairing.openWindow()
+  const window = fixture.gate.open()
   const client = newClient()
   return { client, result: await connect(client, { intent: 'pair', pairingCode: window.code }) }
 }
@@ -201,11 +226,17 @@ describe('Local Direct Host', () => {
     const { client, result } = await pairNew()
     expect(result.ok).toBe(true)
     expect(await roundTrip(result)).toMatchObject({ result: { echoed: { params: { probe: 1 } } } })
-    expect(fixture.controller.connectedPeers()).toEqual([{ deviceId: client.deviceId, mode: 'LAN' }])
+    expect(fixture.controller.connectedPeers()).toEqual([expect.objectContaining({ deviceId: client.deviceId, mode: 'LAN', address: '127.0.0.1' })])
     expect(fixture.pairing.pairedDevice(client.deviceId)?.publicKey).toBe(client.keys.publicKey)
-    // The code was consumed by the successful pairing.
-    expect(await fixture.pairing.activeWindow()).toBeUndefined()
+    // The code was consumed by the approved pairing.
+    expect(fixture.gate.current()).toBeUndefined()
+    // Latency comes from WebSocket ping/pong on the authenticated socket.
+    const rtt = await fixture.controller.measure(client.deviceId)
+    expect(rtt).toBeTypeOf('number')
+    expect(fixture.controller.connectedPeers()[0]?.rttMs).toBe(rtt)
     if (result.ok) result.ws.close()
+    // A phone that goes away is no longer listed as connected.
+    await vi.waitFor(() => expect(fixture.controller.connectionCount()).toBe(0))
 
     const again = await connect(client, { intent: 'connect' })
     expect(again.ok).toBe(true)
@@ -227,7 +258,7 @@ describe('Local Direct Host', () => {
       {
         name: 'pairing with the wrong code',
         run: async () => {
-          await fixture.pairing.openWindow()
+          fixture.gate.open()
           expect(await connect(newClient(), { intent: 'pair', pairingCode: 'wMHCw8TFxsfIycrLzM3Ozw' }))
             .toEqual({ ok: false, code: 'PAIRING_REJECTED' })
           expect(fixture.controller.connectionCount()).toBe(0)
@@ -236,7 +267,7 @@ describe('Local Direct Host', () => {
       {
         name: 'proof replayed from another handshake',
         run: async () => {
-          const window = await fixture.pairing.openWindow()
+          const window = fixture.gate.open()
           const stale = createLocalPairingProof(window.code, new Uint8Array(32))
           expect(await connect(newClient(), { intent: 'pair', proof: () => stale })).toEqual({ ok: false, code: 'PAIRING_REJECTED' })
         },
@@ -244,7 +275,7 @@ describe('Local Direct Host', () => {
       {
         name: 'expired pairing window',
         run: async () => {
-          const window = await fixture.pairing.openWindow()
+          const window = fixture.gate.open()
           fixture.clock.now += 5 * 60_000 + 1
           expect(await connect(newClient(), { intent: 'pair', pairingCode: window.code })).toEqual({ ok: false, code: 'PAIRING_CLOSED' })
         },
@@ -272,7 +303,7 @@ describe('Local Direct Host', () => {
   })
 
   it('closes the pairing window after repeated wrong proofs', async () => {
-    const window = await fixture.pairing.openWindow()
+    const window = fixture.gate.open()
     for (let attempt = 0; attempt < LOCAL_PAIRING_MAX_FAILURES; attempt += 1) {
       expect(await connect(newClient(), { intent: 'pair', proof: () => createLocalPairingProof('wMHCw8TFxsfIycrLzM3Ozw', new Uint8Array(32)) }))
         .toMatchObject({ ok: false })
@@ -280,10 +311,55 @@ describe('Local Direct Host', () => {
     expect(await connect(newClient(), { intent: 'pair', pairingCode: window.code })).toEqual({ ok: false, code: 'PAIRING_CLOSED' })
   })
 
+  it('waits for the computer and refuses every pairing it does not approve', async () => {
+    await runScenarios([
+      {
+        name: 'app without the approval step',
+        run: async () => {
+          const window = fixture.gate.open()
+          expect(await connect(newClient(), { intent: 'pair', pairingCode: window.code, capabilities: [] }))
+            .toEqual({ ok: false, code: 'UNSUPPORTED_VERSION' })
+        },
+      },
+      {
+        name: 'declined on the computer',
+        run: async () => {
+          const window = fixture.gate.open()
+          const client = newClient()
+          expect(await connect(client, { intent: 'pair', pairingCode: window.code, decision: 'deny' }))
+            .toEqual({ ok: false, code: 'PAIRING_DENIED' })
+          expect(fixture.pairing.hasDevice(client.deviceId)).toBe(false)
+          // One code, one decision: the window is gone.
+          expect(fixture.gate.current()).toBeUndefined()
+        },
+      },
+      {
+        name: 'phone hangs up while waiting',
+        run: async () => {
+          const window = fixture.gate.open()
+          await connect(newClient(), { intent: 'pair', pairingCode: window.code, decision: 'hang-up' })
+          await vi.waitFor(() => expect(fixture.gate.current()).toBeUndefined())
+          expect(fixture.pairing.listPairedDevices()).toEqual([])
+        },
+      },
+      {
+        name: 'second phone while the first one waits',
+        run: async () => {
+          const window = fixture.gate.open()
+          const waiting = connectPending(newClient(), window.code)
+          await vi.waitFor(() => expect(fixture.gate.current()?.request).toBeDefined())
+          expect(await connect(newClient(), { intent: 'pair', pairingCode: window.code })).toEqual({ ok: false, code: 'PAIRING_CLOSED' })
+          fixture.gate.close()
+          expect(await waiting).toBe('PAIRING_CLOSED')
+        },
+      },
+    ], reset)
+  })
+
   it('drops the active connection when its pairing is revoked by another process', async () => {
     const { client, result } = await pairNew()
     expect(result.ok).toBe(true)
-    // The CLI edits the same files from a separate store instance.
+    // Another store instance edits the same file.
     const cli = new LocalPairingStore(fixture.root, () => fixture.clock.now)
     expect(await cli.revoke(client.deviceId)).toBe(true)
     expect(await fixture.pairing.reload()).toBe(true)
@@ -308,3 +384,42 @@ describe('Local Direct Host', () => {
     expect(() => resolveBindHosts(['203.0.113.7'], interfaces)).toThrow(TypeError)
   })
 })
+
+/** Pair up to the pending step and report how the Host ended it. */
+async function connectPending(client: TestClient, pairingCode: string): Promise<string> {
+  const ws = new WebSocket(`ws://${fixture.address}${LOCAL_DIRECT_PATH}`)
+  await new Promise<void>((resolve, reject) => { ws.once('open', () => resolve()); ws.once('error', reject) })
+  const inbox = new Inbox(ws)
+  ws.send(encodeLocalControlFrame({
+    v: 1,
+    type: 'local.hello',
+    payload: {
+      clientDeviceId: client.deviceId,
+      clientIdentityKey: client.keys.publicKey,
+      name: 'Phone',
+      platform: 'dsh-app-android',
+      capabilities: [LOCAL_PAIR_APPROVAL_CAPABILITY],
+      intent: 'pair',
+    },
+  }))
+  const ack = decodeLocalControlFrame((await inbox.next())!.data)
+  if (ack.type !== 'local.hello.ack') return ack.type
+  const noise = new NoiseIkSession({
+    role: 'initiator',
+    localPrivateKey: client.keys.privateKey,
+    localPublicKey: client.keys.publicKey,
+    remotePublicKey: fixture.identity.publicKey,
+    prologue: createLocalNoisePrologue(ack.payload.connectionId, ack.payload.hostDeviceId, client.deviceId),
+  })
+  ws.send(encodeLocalControlFrame({ v: 1, type: 'secure.handshake', payload: { connectionId: ack.payload.connectionId, step: 1, data: toBase64Url(noise.writeHandshake()) } }))
+  const step2 = decodeLocalControlFrame((await inbox.next())!.data)
+  if (step2.type !== 'secure.handshake') return step2.type
+  noise.readHandshake(fromBase64Url(step2.payload.data))
+  ws.send(noise.encrypt(encodeLocalPairFrame({ v: 1, type: 'local.pair.prove', payload: { proof: createLocalPairingProof(pairingCode, noise.handshakeHash()) } })))
+  expect(decodeLocalPairFrame(noise.decrypt((await inbox.next())!.data)).type).toBe('local.pair.pending')
+  const end = await inbox.next()
+  ws.terminate()
+  if (end === undefined) return 'CLOSED'
+  const decoded = decodeLocalControlFrame(end.data)
+  return decoded.type === 'local.error' ? decoded.payload.code : decoded.type
+}

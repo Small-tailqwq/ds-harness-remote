@@ -7,6 +7,7 @@ import { fromBase64Url, toBase64Url } from './index.js'
 export const LOCAL_PAIRING_CODE_BYTES = 16
 
 const PROOF_LABEL = new TextEncoder().encode('DSH-REMOTE-LOCAL\0pair-proof\0v=1\0')
+const SAS_LABEL = new TextEncoder().encode('DSH-REMOTE-LOCAL\0pair-sas\0v=1\0')
 
 export function generateLocalPairingCode(random: (length: number) => Uint8Array = randomBytes): string {
   const code = random(LOCAL_PAIRING_CODE_BYTES)
@@ -40,6 +41,17 @@ export function verifyLocalPairingProof(pairingCode: string, handshakeHash: Uint
   let different = 0
   for (let index = 0; index < expected.byteLength; index += 1) different |= expected[index]! ^ actual[index]!
   return different === 0
+}
+
+/**
+ * Six-digit confirmation code both ends derive from the same handshake. The
+ * computer shows it beside the approval request and the phone while it waits,
+ * so the person approving can tell their own phone from a racing one.
+ */
+export function localPairingConfirmationCode(handshakeHash: Uint8Array): string {
+  const digest = sha256(concat(SAS_LABEL, handshakeHash))
+  const value = ((digest[0]! << 24) | (digest[1]! << 16) | (digest[2]! << 8) | digest[3]!) >>> 0
+  return String(value % 1_000_000).padStart(6, '0')
 }
 
 function requirePairingCode(value: string): Uint8Array {

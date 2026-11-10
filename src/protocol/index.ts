@@ -152,6 +152,7 @@ export const rpcMethods = [
   'workspace.upload.commit',
   'workspace.upload.abort',
   'harness.transport.describe',
+  'harness.transport.ping',
   'remote.history.configure',
   'harness.api.call',
   'harness.api.transfer.open',

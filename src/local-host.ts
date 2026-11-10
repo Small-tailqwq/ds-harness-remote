@@ -2,8 +2,17 @@ import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { networkInterfaces } from 'node:os'
 import type { Duplex } from 'node:stream'
-import { NoiseIkSession, NoiseSessionError, createLocalNoisePrologue, fromBase64Url, toBase64Url } from './crypto/index.js'
 import {
+  NoiseIkSession,
+  NoiseSessionError,
+  createLocalNoisePrologue,
+  fromBase64Url,
+  localPairingConfirmationCode,
+  toBase64Url,
+} from './crypto/index.js'
+import {
+  LOCAL_PAIR_APPROVAL_CAPABILITY,
+  LOCAL_PAIRING_APPROVAL_MS,
   LOCAL_DIRECT_PATH,
   LOCAL_DIRECT_VERSION,
   LOCAL_HEARTBEAT_INTERVAL_MS,
@@ -28,16 +37,22 @@ import {
 import { SerialSend, waitForRelayCapacity } from './webrtc.js'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
 import type { ResolvedLocalConfig } from './config.js'
-import type { HostIdentity } from './identity-store.js'
+import { fingerprint, type HostIdentity } from './identity-store.js'
 import { uuidV7 } from './ids.js'
 import { LOCAL_MEMBERSHIP_PREFIX, type LocalPairingStore, type PairedDevice } from './local-pairing.js'
 import type { SafeLogger } from './logging.js'
+import type { PairingDecision, PairingGate } from './pairing-gate.js'
 import type { AuthenticatedPeerChannel } from './types.js'
+
+/** On-demand latency probes give up after this long. */
+const RTT_PROBE_TIMEOUT_MS = 3_000
 
 export interface LocalDirectHostOptions {
   config: ResolvedLocalConfig
   identity: HostIdentity
   pairing: LocalPairingStore
+  /** In-memory pairing window opened from the Desktop UI. */
+  gate: PairingGate
   logger: SafeLogger
   accept: (channel: AuthenticatedPeerChannel) => Promise<void>
   /** True when the device id is already authorized by the account trust store. */
@@ -118,14 +133,6 @@ export class LocalDirectHost {
     }
     this.heartbeat = setInterval(() => this.ping(), LOCAL_HEARTBEAT_INTERVAL_MS)
     this.heartbeat.unref?.()
-    await this.options.pairing.writeListener({
-      hostDeviceId: this.options.identity.deviceId,
-      hostIdentityKey: this.options.identity.publicKey,
-      name: this.options.identity.name,
-      addresses: bound,
-      startedAt: this.now(),
-      pid: process.pid,
-    })
     this.options.logger.info('local direct listening', { addresses: bound })
   }
 
@@ -140,7 +147,6 @@ export class LocalDirectHost {
     this.sockets.clear()
     await Promise.all(this.servers.splice(0).map(server => new Promise<void>(resolve => server.close(() => resolve()))))
     this.addresses = []
-    await this.options.pairing.clearListener(process.pid).catch(() => undefined)
   }
 
   status(): LocalDirectStatus {
@@ -242,10 +248,42 @@ export class LocalDirectHost {
         if (proofFrame.text) throw new LocalRejection('INVALID_MESSAGE', 'Pairing proof must be encrypted.')
         const prove = decodeLocalPairFrame(noise.decrypt(proofFrame.data))
         if (prove.type !== 'local.pair.prove') throw new LocalRejection('INVALID_MESSAGE', 'Expected a pairing proof.')
-        const result = await this.options.pairing.verifyProof(noise.handshakeHash(), prove.payload.proof)
+        const handshakeHash = noise.handshakeHash()
+        const result = this.options.gate.verifyProof(handshakeHash, prove.payload.proof)
         if (!result.ok) {
           this.options.logger.warn('local direct pairing rejected', { reason: result.reason })
           throw new LocalRejection(result.reason === 'closed' ? 'PAIRING_CLOSED' : 'PAIRING_REJECTED', 'Pairing was not accepted.')
+        }
+        // The code only proves the phone saw the QR code. A person at the
+        // computer still decides, comparing the code both screens show.
+        clearTimeout(timer)
+        const withdrawn = new AbortController()
+        const onGone = (): void => withdrawn.abort()
+        ws.once('close', onGone)
+        let decision: PairingDecision
+        try {
+          const approval = this.options.gate.requestApproval({
+            deviceId: hello.clientDeviceId,
+            name: hello.name,
+            platform: hello.platform,
+            fingerprint: fingerprint(hello.clientIdentityKey),
+            address: shortRemote(normalizeRemote(remote)),
+            confirmationCode: localPairingConfirmationCode(handshakeHash),
+          }, withdrawn.signal)
+          const timeoutMs = this.options.gate.current()?.request?.expiresAt
+          ws.send(noise.encrypt(encodeLocalPairFrame({
+            v: LOCAL_DIRECT_VERSION,
+            type: 'local.pair.pending',
+            payload: { timeoutMs: timeoutMs === undefined ? LOCAL_PAIRING_APPROVAL_MS : Math.max(1_000, timeoutMs - this.now()) },
+          })))
+          this.options.logger.info('local direct pairing awaits approval', { peerDeviceId: shortId(hello.clientDeviceId) })
+          decision = await approval
+        } finally {
+          ws.off('close', onGone)
+        }
+        if (decision !== 'approved') {
+          this.options.logger.info('local direct pairing not approved', { decision })
+          throw new LocalRejection(...pairingRejection(decision))
         }
         device = await this.options.pairing.pair({
           deviceId: hello.clientDeviceId,
@@ -269,9 +307,14 @@ export class LocalDirectHost {
 
       clearTimeout(timer)
       inbox.detach()
-      const channel = new LocalNoiseChannel(ws, noise, connectionId, device, inbox.drain())
+      const channel = new LocalNoiseChannel(ws, noise, connectionId, device, inbox.drain(), {
+        remoteAddress: shortRemote(normalizeRemote(remote)),
+        connectedAt: this.now(),
+        latency: latencyOf(ws),
+      })
       noise = undefined
       await this.options.accept(channel)
+      void channel.measureRtt()
     } catch (error) {
       clearTimeout(timer)
       noise?.destroy()
@@ -300,9 +343,12 @@ export class LocalDirectHost {
       return ['PEER_IDENTITY_MISMATCH', 'This device id is already used by an account connection.']
     }
     if (hello.intent === 'pair') {
-      return (await this.options.pairing.activeWindow()) === undefined
-        ? ['PAIRING_CLOSED', 'Open pairing on the Host first.']
-        : undefined
+      if (!hello.capabilities.includes(LOCAL_PAIR_APPROVAL_CAPABILITY)) {
+        return ['UNSUPPORTED_VERSION', 'Update the app to pair: this Host asks for approval on the computer.']
+      }
+      return this.options.gate.accepting()
+        ? undefined
+        : ['PAIRING_CLOSED', 'Open pairing on the Host first.']
     }
     const device = this.options.pairing.pairedDevice(hello.clientDeviceId)
     if (device === undefined) return ['PEER_NOT_PAIRED', 'Pair this device with the Host first.']
@@ -310,20 +356,93 @@ export class LocalDirectHost {
     return undefined
   }
 
+  /** Heartbeat: a socket that missed the previous pong is gone; every pong also samples latency. */
   private ping(): void {
     for (const socket of this.sockets) {
-      const state = socket as WebSocket & { dshAlive?: boolean }
-      if (state.dshAlive === false) {
+      const latency = latencyOf(socket)
+      if (!latency.alive) {
         socket.terminate()
         continue
       }
-      state.dshAlive = false
-      socket.ping()
-      if (!('dshPongBound' in state)) {
-        Object.defineProperty(state, 'dshPongBound', { value: true })
-        socket.on('pong', () => { state.dshAlive = true })
-      }
+      latency.alive = false
+      void latency.probe(LOCAL_HEARTBEAT_INTERVAL_MS)
     }
+  }
+}
+
+/**
+ * Round-trip time from WebSocket ping/pong on one socket. Each ping carries its
+ * own id so a late pong is never matched to a newer probe.
+ */
+class SocketLatency {
+  alive = true
+  rttMs?: number
+  measuredAt?: number
+  private sequence = 0
+  private readonly waiting = new Map<string, { sentAt: number; resolve: (rtt: number | undefined) => void; timer: ReturnType<typeof setTimeout> }>()
+
+  constructor(private readonly ws: WebSocket) {
+    ws.on('pong', data => this.onPong(rawBytes(data)))
+    ws.on('close', () => {
+      for (const entry of this.waiting.values()) {
+        clearTimeout(entry.timer)
+        entry.resolve(undefined)
+      }
+      this.waiting.clear()
+    })
+  }
+
+  probe(timeoutMs = RTT_PROBE_TIMEOUT_MS): Promise<number | undefined> {
+    if (this.ws.readyState !== this.ws.OPEN) return Promise.resolve(undefined)
+    this.sequence = (this.sequence + 1) % 1_000_000
+    const id = String(this.sequence)
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        this.waiting.delete(id)
+        resolve(undefined)
+      }, timeoutMs)
+      timer.unref?.()
+      this.waiting.set(id, { sentAt: performance.now(), resolve, timer })
+      try {
+        this.ws.ping(Buffer.from(id))
+      } catch {
+        clearTimeout(timer)
+        this.waiting.delete(id)
+        resolve(undefined)
+      }
+    })
+  }
+
+  private onPong(data: Uint8Array): void {
+    this.alive = true
+    const id = Buffer.from(data).toString('utf8')
+    const entry = this.waiting.get(id)
+    if (entry === undefined) return
+    this.waiting.delete(id)
+    clearTimeout(entry.timer)
+    const rtt = Math.max(0, Math.round((performance.now() - entry.sentAt) * 10) / 10)
+    this.rttMs = rtt
+    this.measuredAt = Date.now()
+    entry.resolve(rtt)
+  }
+}
+
+const latencies = new WeakMap<WebSocket, SocketLatency>()
+
+function latencyOf(ws: WebSocket): SocketLatency {
+  let latency = latencies.get(ws)
+  if (latency === undefined) {
+    latency = new SocketLatency(ws)
+    latencies.set(ws, latency)
+  }
+  return latency
+}
+
+function pairingRejection(decision: Exclude<PairingDecision, 'approved'>): [LocalErrorCode, string] {
+  switch (decision) {
+    case 'denied': return ['PAIRING_DENIED', 'Pairing was declined on the computer.']
+    case 'expired': return ['PAIRING_EXPIRED', 'Pairing was not approved in time.']
+    case 'closed': return ['PAIRING_CLOSED', 'Pairing was closed on the computer.']
   }
 }
 
@@ -335,6 +454,7 @@ class LocalNoiseChannel implements AuthenticatedPeerChannel {
   readonly mode = 'LAN' as const
   readonly trustScope = 'local' as const
   private readonly handlers = new Set<(message: RemoteMessage) => void>()
+  private readonly closeHandlers = new Set<() => void>()
   private readonly incoming = new SecureMessageCodec()
   private readonly outgoing = new SecureMessageCodec()
   private readonly sends = new SerialSend()
@@ -349,6 +469,7 @@ class LocalNoiseChannel implements AuthenticatedPeerChannel {
     connectionId: string,
     device: PairedDevice,
     queued: readonly InboundFrame[],
+    private readonly link: { remoteAddress: string; connectedAt: number; latency: SocketLatency },
   ) {
     this.security = {
       protocol: 'Noise_IK_25519_ChaChaPoly_SHA256' as const,
@@ -361,6 +482,14 @@ class LocalNoiseChannel implements AuthenticatedPeerChannel {
     ws.on('message', (data, isBinary) => this.receiveBytes(rawBytes(data), isBinary))
     ws.on('close', () => { void this.close() })
     ws.on('error', () => { void this.close() })
+  }
+
+  get remoteAddress(): string { return this.link.remoteAddress }
+  get connectedAt(): number { return this.link.connectedAt }
+  get rttMs(): number | undefined { return this.link.latency.rttMs }
+
+  measureRtt(): Promise<number | undefined> {
+    return this.closed ? Promise.resolve(undefined) : this.link.latency.probe()
   }
 
   send(message: RemoteMessage): Promise<void> {
@@ -385,6 +514,15 @@ class LocalNoiseChannel implements AuthenticatedPeerChannel {
       await this.close().catch(() => undefined)
       throw error
     }
+  }
+
+  onClose(handler: () => void): () => void {
+    if (this.closed) {
+      queueMicrotask(handler)
+      return () => undefined
+    }
+    this.closeHandlers.add(handler)
+    return () => { this.closeHandlers.delete(handler) }
   }
 
   onMessage(handler: (message: RemoteMessage) => void): () => void {
@@ -418,6 +556,9 @@ class LocalNoiseChannel implements AuthenticatedPeerChannel {
     if (this.closed) return
     this.closed = true
     this.handlers.clear()
+    const closeHandlers = [...this.closeHandlers]
+    this.closeHandlers.clear()
+    for (const handler of closeHandlers) handler()
     this.early = undefined
     this.incoming.reset()
     this.outgoing.reset()
